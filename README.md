@@ -1,6 +1,6 @@
 # Spring Boot 웹서버를 FastApi 웹서버로 변환
 
-## **※ AWS EC2 클라우드를 사용해 서버를 배포함**
+## **※ AWS EC2 클라우드를 사용해 서버를 배포함 (Ec2-Vscode.md 참고)**
 
 ## 개발 순서
 
@@ -242,7 +242,7 @@ def root():
 
 1. 가상환경 활성화
 ```bash
-source wms/Scripts/activate
+source wms/bin/activate
 ```
 2. 패키지 설치
 ```bash
