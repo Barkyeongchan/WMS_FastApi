@@ -3,7 +3,7 @@ from app.core.database import Base  # SQLAlchemy Base 클래스, 모든 모델�
 
 class Stocks(Base):
 
-    __tablename__ = "stocks"  # DB 테이블명 지정
+    __tablename__ = "stock"  # DB 테이블명 지정
 
     # 고유 ID, 자동 증가
     id = Column(BigInteger, primary_key=True, autoincrement=True)
