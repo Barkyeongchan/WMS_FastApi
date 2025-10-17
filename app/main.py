@@ -1,19 +1,8 @@
-from fastapi import FastAPI, WebSocket
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-import asyncio
-from app.websocket import ros_ws_task, websocket_endpoint
+from fastapi import FastAPI
+from app.core.config import settings
 
-app = FastAPI()
+app = FastAPI(title="WMS FastAPI Server", debug=settings.DEBUG)
 
-# 정적 파일과 템플릿
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
-templates = Jinja2Templates(directory="app/templates")
-
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(ros_ws_task())
-
-@app.websocket("/ws")
-async def ws_endpoint_route(websocket: WebSocket):
-    await websocket_endpoint(websocket)
+@app.get("/")
+def root():
+    return {"message": "FastAPI 서버 실행"}
