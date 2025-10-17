@@ -1,5 +1,7 @@
 # Spring Boot 웹서버를 FastApi 웹서버로 변환
 
+## **※ AWS EC2 클라우드를 사용해 서버를 배포함**
+
 ## 개발 순서
 
 1. 환경 세팅
@@ -52,6 +54,12 @@
 <br><br>
 
 ## 1. 환경 세팅
+
+**FastApi 프로젝트 기본 구조 & 환경 설정**
+
+<details>
+<summary></summary>
+<div markdown="1">
 
 ### 기본 폴더 구조
 ```markdown
@@ -126,38 +134,33 @@ Thumbs.db
 **FastApi 서버 구동에 필요한 패키지 (MySql 기준)**
 
 ```txt
-aiohappyeyeballs==2.6.1
-aiohttp==3.13.0
-aiosignal==1.4.0
-annotated-types==0.7.0
-anyio==4.11.0
-async-timeout==5.0.1
-attrs==25.4.0
-click==8.3.0
-colorama==0.4.6
-exceptiongroup==1.3.0
-fastapi==0.119.0
-frozenlist==1.8.0
-greenlet==3.2.4
-h11==0.16.0
-idna==3.11
-Jinja2==3.1.6
-MarkupSafe==3.0.3
-multidict==6.7.0
-propcache==0.4.1
-psycopg2-binary==2.9.11
-pydantic==2.12.2
-pydantic_core==2.41.4
-python-multipart==0.0.20
-sniffio==1.3.1
-SQLAlchemy==2.0.44
-starlette==0.48.0
-typing-inspection==0.4.2
-typing_extensions==4.15.0
-uvicorn==0.37.0
-websockets==15.0.1
-yarl==1.22.0
+fastapi
+uvicorn
+sqlalchemy
+pydantic==1.10.24    # 버전 1로 설치 해야함
+python-dotenv
+alembic
+passlib[bcrypt]
+python-multipart
+requests
+mysqlclient
+jinja2
 ```
+
+| 패키지 | 설명 |
+|--------|-----|
+| `fastapi` | FastAPI 웹 프레임워크 |
+| `uvicorn` | ASGI 서버 (FastAPI 실행) |
+| `sqlalchemy` | ORM |
+| `pydantic` | FastAPI의 데이터 검증 라이브러리 (fastapi가 의존) |
+| `python-dotenv` | .env 파일 환경 변수 처리 |
+| `alembic` | SQLAlchemy 기반 DB 마이그레이션 |
+| `passlib[bcrypt]` | 비밀번호 해시 암호화 (bcrypt 포함) |
+| `python-multipart` | 파일 업로드 처리 |
+| `requests` | HTTP 요청 라이브러리 |
+| `mysqlclient` | MySQL 드라이버 |
+| `jinja2` | 템플릿 엔진 |
+
 ---
 ### .env
 
@@ -232,5 +235,163 @@ app = FastAPI(title="WMS FastAPI Server", debug=settings.DEBUG)
 
 @app.get("/")
 def root():
-    return {"message": "WMS FastAPI Server Running"}
+    return {"message": "FastAPI 서버 실행"}
 ```
+---
+### 실행 확인
+
+1. 가상환경 활성화
+```bash
+source wms/Scripts/activate
+```
+2. 패키지 설치
+```bash
+python -m pip install -r requirements.txt    # 패키지 설치
+
+python -m pip freeze > requirements.txt    # 패키지 설치 후 패키지 버전 추가
+```
+3. 기본 폴더 생성
+```bash
+mkdir -p app/core app/models app/schemas app/crud app/routers app/services app/utils app/templates app/static
+```
+4. 서버 실행
+```bash
+uvicorn app.main:app --reload
+```
+</div></details>
+
+## 2. DB 모델
+
+**Spring Boot 엔티티 → FastAPI SQLAlchemy 모델 변환**
+
+※ Admins와 Role을 포함한 로그인 기능은 삭제
+
+<details>
+<summary></summary>
+<div markdown="1">
+
+- `Base` 상속 → SQLAlchemy 모델 기본 구조
+
+- `__tablename__` → DB 테이블 이름
+
+- `unique=True` → 중복 방지
+
+- `nullable` → 필수 입력 여부
+
+### app/models/log.py
+
+```python
+from sqlalchemy import Column, Integer, String, BigInteger, DateTime
+from app.core.database import Base  # SQLAlchemy Base 클래스, 모든 모델은 이 클래스를 상속해야 함
+
+class Log(Base):
+    
+    __tablename__ = "log"  # DB 테이블명 지정
+
+    # 고유 ID, 자동 증가
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    # 로봇 관련 정보
+    robot_name = Column(String, nullable=False)  # 로봇 이름
+    robot_ip = Column(String, nullable=True)     # 로봇 IP 주소 (옵션)
+
+    # 핀 관련 정보
+    pin_name = Column(String, nullable=False)    # 핀 이름
+    pin_coords = Column(String, nullable=True)   # 핀 좌표 (옵션)
+
+    # 제품 관련 정보
+    product_name = Column(String, nullable=False)  # 제품 이름
+    product_id = Column(BigInteger, nullable=True) # 제품 고유 ID (옵션)
+    quantity = Column(Integer, nullable=False)     # 수량
+
+    # 작업 관련 정보
+    action = Column(String, nullable=False)    # 수행된 작업/행동
+    operator = Column(String, nullable=True)   # 작업자 이름 (옵션)
+    
+    # 이벤트 발생 시간
+    timestamp = Column(DateTime, nullable=False)  # 로그 발생 시각
+```
+---
+### app/models/robot.py
+
+```python
+from sqlalchemy import Column, String, BigInteger
+from app.core.database import Base  # SQLAlchemy Base 클래스, 모든 모델은 이 클래스를 상속해야 함
+
+class Robot(Base):
+
+    __tablename__ = "robot"  # DB 테이블명 지정
+
+    # 고유 ID, 자동 증가
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    # 로봇 이름
+    name = Column(String, nullable=False, unique=True)  # 필수, 중복 불가
+
+    # 로봇 IP 주소
+    ip = Column(String, nullable=False)  # 필수, 네트워크 연결용
+```
+---
+### app/models/category.py
+
+```python
+from sqlalchemy import Column, String, BigInteger
+from app.core.database import Base  # SQLAlchemy Base 클래스, 모든 모델은 이 클래스를 상속해야 함
+
+class Category(Base):
+
+    __tablename__ = "category"  # DB 테이블명 지정
+
+    # 고유 ID, 자동 증가
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    # 카테고리 이름
+    name = Column(String, nullable=False, unique=True)  # 필수, 중복 불가
+```
+---
+### app/models/pin.py
+
+```python
+from sqlalchemy import Column, String, BigInteger
+from app.core.database import Base  # SQLAlchemy Base 클래스, 모든 모델은 이 클래스를 상속해야 함
+
+class Pin(Base):
+
+    __tablename__ = "pin"  # DB 테이블명 지정
+
+    # 고유 ID, 자동 증가
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    # 핀 이름
+    name = Column(String, nullable=False, unique=True)  # 필수, 중복 불가
+
+    # 핀 좌표
+    coords = Column(String, nullable=True)  # "x,y" 형태, 옵션 필드
+```
+---
+### app/models/stocks.py
+
+```python
+from sqlalchemy import Column, String, Integer, BigInteger
+from app.core.database import Base  # SQLAlchemy Base 클래스, 모든 모델은 이 클래스를 상속해야 함
+
+class Stocks(Base):
+
+    __tablename__ = "stocks"  # DB 테이블명 지정
+
+    # 고유 ID, 자동 증가
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    # 제품 이름
+    name = Column(String, nullable=False)  # 필수 입력
+
+    # 카테고리 정보
+    category = Column(String, nullable=False)  # Category 이름 참조 (외래키로 연결 가능)
+
+    # 핀 정보
+    pin = Column(String, nullable=False)       # Pin 이름 참조 (외래키로 연결 가능)
+
+    # 수량
+    quantity = Column(Integer, nullable=False)  # 필수 입력
+```
+</div></details>
