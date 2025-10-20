@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.log import Log
+from app.models.log_model import Log
 
 # CREATE 새로운 로그 데이터 추가
 def create_log(db: Session, log_data: dict):

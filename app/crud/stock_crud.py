@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.stocks import Stocks
+from app.models.stock_model import Stock
 
 # CREATE 새로운 재고 데이터 추가
 def create_stock(db: Session, stock_data: dict):

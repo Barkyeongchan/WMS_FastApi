@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.robot import Robot
+from app.models.robot_model import Robot
 
 # CREATE 새로운 로봇 데이터 추가
 def create_robot(db: Session, robot_data: dict):

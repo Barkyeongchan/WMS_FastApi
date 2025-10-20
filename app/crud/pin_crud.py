@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.pin import Pin
+from app.models.pin_model import Pin
 
 # CREATE 새로운 핀 데이터 추가
 def create_pin(db: Session, pin_data: dict):

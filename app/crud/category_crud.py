@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.category import Category
+from app.models.category_model import Category
 
 # CREATE 새로운 카테고리 추가
 def create_category(db: Session, category_data: dict):
