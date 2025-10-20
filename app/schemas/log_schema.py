@@ -1,6 +1,7 @@
-rom pydantic import BaseModel
+from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
+
 
 # 기본 로그 데이터 스키마 (공통 필드 정의)
 class LogBase(BaseModel):
@@ -12,9 +13,10 @@ class LogBase(BaseModel):
     pinName: str                        # 핀 이름
     pinCoords: Optional[str] = None     # 핀 좌표 (옵션)
 
-    # 제품 관련 정보
-    productName: str                    # 제품 이름
-    productId: Optional[int] = None     # 제품 ID (옵션)
+    # 카테고리 및 제품 관련 정보
+    categoryName: str                   # 카테고리 이름
+    stockName: str                      # 제품 이름
+    stockId: Optional[int] = None       # 제품 ID (옵션)
     quantity: int                       # 수량
 
     # 작업 관련 정보
@@ -36,8 +38,9 @@ class LogUpdate(BaseModel):
     robotIp: Optional[str] = None
     pinName: Optional[str] = None
     pinCoords: Optional[str] = None
-    productName: Optional[str] = None
-    productId: Optional[int] = None
+    categoryName: Optional[str] = None
+    stockName: Optional[str] = None
+    stockId: Optional[int] = None
     quantity: Optional[int] = None
     action: Optional[str] = None
     timestamp: Optional[datetime] = None
