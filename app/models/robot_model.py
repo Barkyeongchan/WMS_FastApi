@@ -9,7 +9,7 @@ class Robot(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
 
     # 로봇 이름
-    name = Column(String, nullable=False, unique=True)  # 필수, 중복 불가
+    name = Column(String(100), nullable=False, unique=True)  # 필수, 중복 불가
 
     # 로봇 IP 주소
-    ip = Column(String, nullable=False)  # 필수, 네트워크 연결용
+    ip = Column(String(45), nullable=False)  # 필수, 네트워크 연결용
