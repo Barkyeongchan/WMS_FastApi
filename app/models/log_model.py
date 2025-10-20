@@ -26,7 +26,6 @@ class Log(Base):
 
     # 작업 관련 정보
     action = Column(String(50), nullable=False)    # 수행된 작업/행동
-    operator = Column(String(50), nullable=True)   # 작업자 이름 (옵션)
     
     # 이벤트 발생 시간
     timestamp = Column(DateTime, nullable=False)  # 로그 발생 시각
