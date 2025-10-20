@@ -6,17 +6,17 @@ from typing import Optional
 # 기본 로그 데이터 스키마 (공통 필드 정의)
 class LogBase(BaseModel):
     # 로봇 관련 정보
-    robotName: str                      # 로봇 이름
-    robotIp: Optional[str] = None       # 로봇 IP 주소 (옵션)
+    robot_name: str                      # 로봇 이름
+    robot_ip: Optional[str] = None       # 로봇 IP 주소 (옵션)
 
     # 핀 관련 정보
-    pinName: str                        # 핀 이름
-    pinCoords: Optional[str] = None     # 핀 좌표 (옵션)
+    pin_name: str                        # 핀 이름
+    pin_coords: Optional[str] = None     # 핀 좌표 (옵션)
 
     # 카테고리 및 제품 관련 정보
-    categoryName: str                   # 카테고리 이름
-    stockName: str                      # 제품 이름
-    stockId: Optional[int] = None       # 제품 ID (옵션)
+    category_name: str                   # 카테고리 이름
+    stock_name: str                      # 제품 이름
+    stock_id: Optional[int] = None       # 제품 ID (옵션)
     quantity: int                       # 수량
 
     # 작업 관련 정보
@@ -34,13 +34,13 @@ class LogCreate(LogBase):
 # 로그 수정 시 사용 (부분 업데이트 허용)
 class LogUpdate(BaseModel):
     # 모든 필드는 선택적으로 수정 가능
-    robotName: Optional[str] = None
-    robotIp: Optional[str] = None
-    pinName: Optional[str] = None
-    pinCoords: Optional[str] = None
-    categoryName: Optional[str] = None
-    stockName: Optional[str] = None
-    stockId: Optional[int] = None
+    robot_name: Optional[str] = None
+    robot_ip: Optional[str] = None
+    pin_name: Optional[str] = None
+    pin_coords: Optional[str] = None
+    category_name: Optional[str] = None
+    stock_name: Optional[str] = None
+    stock_id: Optional[int] = None
     quantity: Optional[int] = None
     action: Optional[str] = None
     timestamp: Optional[datetime] = None
