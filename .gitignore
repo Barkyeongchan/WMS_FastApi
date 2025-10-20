@@ -22,3 +22,4 @@ Thumbs.db
 *.db
 
 alembic.ini
+alembic
