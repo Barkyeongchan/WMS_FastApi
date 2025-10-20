@@ -240,21 +240,27 @@ def root():
 ---
 ### 실행 확인
 
-1. 가상환경 활성화
+1. 시스템 패키지 설치
+```bash
+sudo apt update
+
+sudo apt install -y pkg-config default-libmysqlclient-dev build-essential
+```
+2. 가상환경 활성화
 ```bash
 source wms/bin/activate
 ```
-2. 패키지 설치
+3. 패키지 설치
 ```bash
 python -m pip install -r requirements.txt    # 패키지 설치
 
 python -m pip freeze > requirements.txt    # 패키지 설치 후 패키지 버전 추가
 ```
-3. 기본 폴더 생성
+4. 기본 폴더 생성
 ```bash
 mkdir -p app/core app/models app/schemas app/crud app/routers app/services app/utils app/templates app/static
 ```
-4. 서버 실행
+5. 서버 실행
 ```bash
 uvicorn app.main:app --reload
 ```
@@ -394,4 +400,412 @@ class Stocks(Base):
     # 수량
     quantity = Column(Integer, nullable=False)  # 필수 입력
 ```
+</div></details>
+
+## 3. CRUD & 서비스 계층
+
+<details>
+<summary></summary>
+<div markdown="1">
+
+### CRUD 스켈레톤 `app/crud/`
+
+`app/crud/log_crud.py`
+
+```python
+from sqlalchemy.orm import Session
+from app.models.log import Log
+
+# CREATE 새로운 로그 데이터 추가
+def create_log(db: Session, log_data: dict):
+    log = Log(**log_data)     # 전달받은 데이터(dict)를 Log 객체로 변환
+    db.add(log)               # 세션에 추가
+    db.commit()               # 변경사항 저장
+    db.refresh(log)           # DB 반영된 최신 데이터로 갱신
+    return log
+
+
+# READ 특정 로그 ID로 조회
+def get_log(db: Session, log_id: int):
+    return db.query(Log).filter(Log.id == log_id).first()
+
+
+# READ-ALL 전체 로그 또는 일부 로그 목록 조회
+def get_logs(db: Session, skip: int = 0, limit: int = 100):   # skip: 건너뛸 수, limit: 최대 조회 수
+    return db.query(Log).offset(skip).limit(limit).all()
+
+
+# UPDATE 로그 데이터 수정
+def update_log(db: Session, log_id: int, update_data: dict):
+    log = db.query(Log).filter(Log.id == log_id).first()
+    if not log:
+        return None
+
+    for key, value in update_data.items():   # 전달받은 필드만 업데이트
+        setattr(log, key, value)
+
+    db.commit()        # 변경사항 저장
+    db.refresh(log)    # 최신 상태로 갱신
+    return log
+
+
+# DELETE 로그 데이터 삭제
+def delete_log(db: Session, log_id: int):
+    log = db.query(Log).filter(Log.id == log_id).first()
+    if not log:
+        return None
+
+    db.delete(log)     # 세션에서 삭제
+    db.commit()        # 실제 DB에 반영
+    return log
+```
+
+**같은 방식으로 `Robot`, `Pin`, `Category`, `Stock` CRUD도 각각 생성**
+
+---
+### 서비스 계층 `app/services/`
+- CRUD 호출
+- 비지니스 로직 처리 (재고 수량 업데이트, 입/출고 처리, 로봇 상태 확인 등)
+
+```python
+from sqlalchemy.orm import Session
+from app.crud import log_crud
+from app.models.log import Log
+
+class LogService:
+    
+    def __init__(self, db: Session):
+        self.db = db  # 데이터베이스 세션 주입 (DI 방식)
+
+    # CREATE 로그 생성
+    def create_log_entry(self, robot_name: str, pin_name: str, product_name: str,
+                         quantity: int, action: str, timestamp):
+        log = Log(
+            robot_name=robot_name,
+            pin_name=pin_name,
+            product_name=product_name,
+            quantity=quantity,
+            action=action,
+            timestamp=timestamp
+        )
+        return log_crud.create_log(self.db, log)
+
+    # READ 전체 로그 조회
+    def list_logs(self, skip: int = 0, limit: int = 100):
+        return log_crud.get_logs(self.db, skip, limit)
+```
+
+**같은 방식으로 `Robot`, `Pin`, `Category`, `Stock` service도 각각 생성**
+
+---
+### CRUD + Service 테스트
+
+1. `.enc`에 RDS 정보 입력
+2. `main.py`에서 DB 세션 생성 후 테스트
+3. 샘플 데이터를 생성하고 반환되는지 확인
+
+```python
+# app/main.py
+from fastapi import Depends
+from sqlalchemy.orm import Session
+from app.core.database import SessionLocal
+from app.services.log_service import LogService
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@app.get("/test_logs")
+def test_logs(db: Session = Depends(get_db)):
+    service = LogService(db)
+    return service.list_logs()
+```
+
+- `uvicorn app.main:app --reload` 후 `/test_logs` 접속
+
+- DB 연결 확인 가능 : `[]`출력 확인
+
+</div></details>
+
+## 4. API 엔드포인트 구축
+
+**라우터를 만들고 CRUD API 완성**
+
+<details>
+<summary></summary>
+<div markdown="1">
+
+### `schemas/log_schema.py`
+
+- API 요청/응답 구조 정의
+
+```python
+from pydantic import BaseModel
+from datetime import datetime
+from typing import Optional
+
+
+# 기본 로그 데이터 스키마 (공통 필드 정의)
+class LogBase(BaseModel):
+    # 로봇 관련 정보
+    robot_name: str                      # 로봇 이름
+    robot_ip: Optional[str] = None       # 로봇 IP 주소 (옵션)
+
+    # 핀 관련 정보
+    pin_name: str                        # 핀 이름
+    pin_coords: Optional[str] = None     # 핀 좌표 (옵션)
+
+    # 카테고리 및 제품 관련 정보
+    category_name: str                   # 카테고리 이름
+    stock_name: str                      # 제품 이름
+    stock_id: Optional[int] = None       # 제품 ID (옵션)
+    quantity: int                       # 수량
+
+    # 작업 관련 정보
+    action: str                         # 작업 종류 (예: 입고, 출고)
+
+    # 로그 발생 시각
+    timestamp: datetime                 # 이벤트 발생 시각
+
+
+# 로그 생성 요청 시 사용 (입력용)
+class LogCreate(LogBase):
+    pass  # LogBase 그대로 사용, 추가 필드 없음
+
+
+# 로그 수정 시 사용 (부분 업데이트 허용)
+class LogUpdate(BaseModel):
+    # 모든 필드는 선택적으로 수정 가능
+    robot_name: Optional[str] = None
+    robot_ip: Optional[str] = None
+    pin_name: Optional[str] = None
+    pin_coords: Optional[str] = None
+    category_name: Optional[str] = None
+    stock_name: Optional[str] = None
+    stock_id: Optional[int] = None
+    quantity: Optional[int] = None
+    action: Optional[str] = None
+    timestamp: Optional[datetime] = None
+
+
+# 로그 조회 응답 시 사용 (출력용)
+class LogResponse(LogBase):
+    id: int  # 고유 ID 필드 포함
+
+    class Config:
+        orm_mode = True  # SQLAlchemy ORM 객체를 자동으로 변환 가능하게 설정
+```
+
+**같은 방식으로 `Robot`, `Pin`, `Category`, `Stock` schema도 각각 생성**
+
+---
+### `crud/log_crud.py`
+
+```python
+from sqlalchemy.orm import Session
+from app.models.log import Log
+from app.schemas.log_schema import LogCreate, LogUpdate
+
+
+# READ-ALL 전체 로그 조회
+def get_logs(db: Session):
+    return db.query(Log).all()
+
+
+# READ 단일 로그 조회 (ID 기준)
+def get_log_by_id(db: Session, log_id: int):
+    return db.query(Log).filter(Log.id == log_id).first()
+
+
+# CREATE 새로운 로그 데이터 추가
+def create_log(db: Session, log: LogCreate):
+    db_log = Log(**log.dict())   # Pydantic 모델(LogCreate)을 SQLAlchemy 객체로 변환
+    db.add(db_log)               # 세션에 추가
+    db.commit()                  # 변경사항 저장
+    db.refresh(db_log)           # DB 반영된 최신 상태로 갱신
+    return db_log
+
+
+# UPDATE 로그 데이터 수정
+def update_log(db: Session, log_id: int, log_data: LogUpdate):
+    db_log = db.query(Log).filter(Log.id == log_id).first()
+    if not db_log:
+        return None
+
+    # 수정 요청된 필드만 갱신 (exclude_unset=True → 전달된 값만 업데이트)
+    for key, value in log_data.dict(exclude_unset=True).items():
+        setattr(db_log, key, value)
+
+    db.commit()        # 변경사항 저장
+    db.refresh(db_log) # 최신 상태로 갱신
+    return db_log
+
+
+# DELETE 로그 데이터 삭제
+def delete_log(db: Session, log_id: int):
+    db_log = db.query(Log).filter(Log.id == log_id).first()
+    if not db_log:
+        return None
+
+    db.delete(db_log)  # 세션에서 삭제
+    db.commit()        # 실제 DB 반영
+    return db_log
+```
+
+### **※기존 코드와 다른 점**
+
+- **Pydantic 스키마를 직접 사용 - FastApi가 자동으로 유효성 검사**
+```python
+def create_log(db: Session, log: LogCreate):
+    db_log = Log(**log.dict())  # 스키마 → ORM 변환
+```
+
+- **`exclude_unset=True`로 부분 업데이트(PATCH) 지원 - 변경된 필드만 부분 수정**
+```python
+for key, value in log_data.dict(exclude_unset=True).items():
+    setattr(db_log, key, value)
+```
+- **CRUD 함수 이름이 RESTful 패턴(`get_*`, `create_*`, `update_*`, `delete_*`)으로 통일**
+- **FastApi 자동 문서화와 호환**
+- **API - DB 사이의 데이터 무결성 확보**
+
+**같은 방식으로 `Robot`, `Pin`, `Category`, `Stock` crud도 각각 생성**
+
+---
+### `routers/log_router.py`
+
+```python
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from typing import List
+from app.core.database import SessionLocal
+from app.schemas.log_schema import LogResponse, LogCreate, LogUpdate
+from app.crud import log_crud
+
+# Logs 관련 라우터 설정
+router = APIRouter(prefix="/logs", tags=["Logs"])
+
+
+# DB 세션 생성
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+# READ-ALL 전체 로그 조회
+@router.get("/", response_model=List[LogResponse])
+def read_logs(db: Session = Depends(get_db)):
+    return log_crud.get_logs(db)
+
+
+# READ 단일 로그 조회 (ID 기준)
+@router.get("/{log_id}", response_model=LogResponse)
+def read_log(log_id: int, db: Session = Depends(get_db)):
+    log = log_crud.get_log_by_id(db, log_id)
+    if not log:
+        raise HTTPException(status_code=404, detail="Log not found")
+    return log
+
+
+# CREATE 새로운 로그 추가
+@router.post("/", response_model=LogResponse)
+def create_log(log: LogCreate, db: Session = Depends(get_db)):
+    return log_crud.create_log(db, log)
+
+
+# UPDATE 로그 데이터 수정
+@router.put("/{log_id}", response_model=LogResponse)
+def update_log(log_id: int, log_data: LogUpdate, db: Session = Depends(get_db)):
+    updated = log_crud.update_log(db, log_id, log_data)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Log not found")
+    return updated
+
+
+# DELETE 로그 데이터 삭제
+@router.delete("/{log_id}", response_model=LogResponse)
+def delete_log(log_id: int, db: Session = Depends(get_db)):
+    deleted = log_crud.delete_log(db, log_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Log not found")
+    return deleted
+```
+
+**같은 방식으로 `Robot`, `Pin`, `Category`, `Stock` router도 각각 생성**
+
+---
+### `main.py` 수정
+
+```python
+from fastapi import FastAPI
+from app.routers import log_router
+
+# FastAPI 애플리케이션 생성
+app = FastAPI(title="WMS FastAPI Server", version="0.2.0")
+
+# 기본 루트 엔드포인트
+@app.get("/")
+def root():
+    return {"message": "FastAPI 서버 실행 중"}
+
+# Logs 라우터 등록
+app.include_router(log_router.router)
+```
+
+- `# FastAPI 애플리케이션 생성` → 앱 정의
+
+- `# 기본 루트 엔드포인트` → 서버 상태 확인용
+
+- `# Logs 라우터 등록` → 로그 관련 API 묶음 등록
+---
+
+### 테스트 실행
+
+1. 서버 실행 (`uvicorn app.main:app --reload`)
+
+2. `http://127.0.0.1:8000/logs` 접속 후 출력 확인 (`[]`출력)
+
+3. `http://127.0.0.1:8000/docs` 접속
+
+4. `Swagger`에서 **POST /logs/** 선택 → “Try it out” 클릭
+
+5. 요청 예시 확인
+```json
+{
+  "robot_name": "string",
+  "robot_ip": "string",
+  "pin_name": "string",
+  "pin_coords": "string",
+  "category_name": "string",
+  "stock_name": "string",
+  "stock_id": 0,
+  "quantity": 0,
+  "action": "string",
+  "timestamp": "2025-10-20T08:44:42.817Z"
+}
+```
+6. 예시 입력
+```json
+{
+  "robot_name": "WMS-01",
+  "robot_ip": "192.168.0.10",
+  "pin_name": "A-1",
+  "pin_coords": "10.2, 5.7",
+  "category_name": "전자부품",
+  "stock_name": "IC칩 세트",
+  "stock_id": 1001,
+  "quantity": 25,
+  "action": "입고",
+  "timestamp": "2025-10-20T17:23:52"
+}
+```
+
+7. `http://127.0.0.1:8000/logs`에서 확인 또는 `Swagger`에서 확인
+
 </div></details>
