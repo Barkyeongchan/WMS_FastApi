@@ -22,7 +22,6 @@ class LogService:
         robot_ip: Optional[str] = None,
         pin_coords: Optional[str] = None,
         stock_id: Optional[int] = None,
-        operator: Optional[str] = None,
     ):
 
         log = Log(
@@ -35,7 +34,6 @@ class LogService:
             stock_id=stock_id,
             quantity=quantity,
             action=action,
-            operator=operator,
             timestamp=timestamp,
         )
         return log_crud.create_log(self.db, log)
