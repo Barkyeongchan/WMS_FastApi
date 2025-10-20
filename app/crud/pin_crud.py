@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.log import Log
+from app.models.log_model import Log
 from app.schemas.log_schema import LogCreate, LogUpdate
 
 

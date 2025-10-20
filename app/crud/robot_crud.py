@@ -1,6 +1,6 @@
 # app/crud/robot_crud.py
 from sqlalchemy.orm import Session
-from app.models.robot import Robot
+from app.models.robot_model import Robot
 from app.schemas.robot_schema import RobotCreate, RobotUpdate
 
 
