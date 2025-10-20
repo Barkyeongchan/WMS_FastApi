@@ -20,3 +20,5 @@ Thumbs.db
 
 # SQLite (필요시 제외)
 *.db
+
+alembic.ini
