@@ -1,45 +1,48 @@
 from sqlalchemy.orm import Session
-from app.models.category_model import Category
-
-# CREATE 새로운 카테고리 추가
-def create_category(db: Session, category_data: dict):
-    category = Category(**category_data)
-    db.add(category)
-    db.commit()
-    db.refresh(category)
-    return category
+from app.models.log import Log
+from app.schemas.log_schema import LogCreate, LogUpdate
 
 
-# READ 특정 카테고리 ID로 조회
-def get_category(db: Session, category_id: int):
-    return db.query(Category).filter(Category.id == category_id).first()
+# READ-ALL 전체 로그 조회
+def get_logs(db: Session):
+    return db.query(Log).all()
 
 
-# READ-ALL 전체 카테고리 목록 조회
-def get_categories(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Category).offset(skip).limit(limit).all()
+# READ 단일 로그 조회 (ID 기준)
+def get_log_by_id(db: Session, log_id: int):
+    return db.query(Log).filter(Log.id == log_id).first()
 
 
-# UPDATE 카테고리 데이터 수정
-def update_category(db: Session, category_id: int, update_data: dict):
-    category = db.query(Category).filter(Category.id == category_id).first()
-    if not category:
+# CREATE 새로운 로그 데이터 추가
+def create_log(db: Session, log: LogCreate):
+    db_log = Log(**log.dict())   # Pydantic 모델(LogCreate)을 SQLAlchemy 객체로 변환
+    db.add(db_log)               # 세션에 추가
+    db.commit()                  # 변경사항 저장
+    db.refresh(db_log)           # DB 반영된 최신 상태로 갱신
+    return db_log
+
+
+# UPDATE 로그 데이터 수정
+def update_log(db: Session, log_id: int, log_data: LogUpdate):
+    db_log = db.query(Log).filter(Log.id == log_id).first()
+    if not db_log:
         return None
 
-    for key, value in update_data.items():
-        setattr(category, key, value)
+    # 수정 요청된 필드만 갱신 (exclude_unset=True → 전달된 값만 업데이트)
+    for key, value in log_data.dict(exclude_unset=True).items():
+        setattr(db_log, key, value)
 
-    db.commit()
-    db.refresh(category)
-    return category
+    db.commit()        # 변경사항 저장
+    db.refresh(db_log) # 최신 상태로 갱신
+    return db_log
 
 
-# DELETE 카테고리 데이터 삭제
-def delete_category(db: Session, category_id: int):
-    category = db.query(Category).filter(Category.id == category_id).first()
-    if not category:
+# DELETE 로그 데이터 삭제
+def delete_log(db: Session, log_id: int):
+    db_log = db.query(Log).filter(Log.id == log_id).first()
+    if not db_log:
         return None
 
-    db.delete(category)
-    db.commit()
-    return category
+    db.delete(db_log)  # 세션에서 삭제
+    db.commit()        # 실제 DB 반영
+    return db_log

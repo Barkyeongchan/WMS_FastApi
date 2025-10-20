@@ -1,45 +1,48 @@
+# app/crud/stock_crud.py
 from sqlalchemy.orm import Session
-from app.models.stock_model import Stock
+from app.models.stock import Stock
+from app.schemas.stock_schema import StockCreate, StockUpdate
 
-# CREATE 새로운 재고 데이터 추가
-def create_stock(db: Session, stock_data: dict):
-    stock = Stocks(**stock_data)
-    db.add(stock)
+
+# READ-ALL 전체 재고 조회
+def get_stocks(db: Session):
+    return db.query(Stock).all()
+
+
+# READ 단일 재고 조회 (ID 기준)
+def get_stock_by_id(db: Session, stock_id: int):
+    return db.query(Stock).filter(Stock.id == stock_id).first()
+
+
+# CREATE 새로운 재고 추가
+def create_stock(db: Session, stock: StockCreate):
+    db_stock = Stock(**stock.dict())
+    db.add(db_stock)
     db.commit()
-    db.refresh(stock)
-    return stock
-
-
-# READ 특정 재고 ID로 조회
-def get_stock(db: Session, stock_id: int):
-    return db.query(Stocks).filter(Stocks.id == stock_id).first()
-
-
-# READ-ALL 전체 재고 목록 조회
-def get_stocks(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Stocks).offset(skip).limit(limit).all()
+    db.refresh(db_stock)
+    return db_stock
 
 
 # UPDATE 재고 데이터 수정
-def update_stock(db: Session, stock_id: int, update_data: dict):
-    stock = db.query(Stocks).filter(Stocks.id == stock_id).first()
-    if not stock:
+def update_stock(db: Session, stock_id: int, update_data: StockUpdate):
+    db_stock = db.query(Stock).filter(Stock.id == stock_id).first()
+    if not db_stock:
         return None
 
-    for key, value in update_data.items():
-        setattr(stock, key, value)
+    for key, value in update_data.dict(exclude_unset=True).items():
+        setattr(db_stock, key, value)
 
     db.commit()
-    db.refresh(stock)
-    return stock
+    db.refresh(db_stock)
+    return db_stock
 
 
-# DELETE 재고 데이터 삭제
+# DELETE 재고 삭제
 def delete_stock(db: Session, stock_id: int):
-    stock = db.query(Stocks).filter(Stocks.id == stock_id).first()
-    if not stock:
+    db_stock = db.query(Stock).filter(Stock.id == stock_id).first()
+    if not db_stock:
         return None
 
-    db.delete(stock)
+    db.delete(db_stock)
     db.commit()
-    return stock
+    return db_stock
