@@ -6,7 +6,7 @@
 
 1. 환경 세팅
 - Python 가상환경 생성 `venv`
-- FastAPI, Uvicorn, SQLAlchemy, Pydantic, python-dotenv 설치
+- `FastAPI`, `Uvicorn`, `SQLAlchemy`, `Pydantic`, `python-dotenv` 설치
 - `.env` + `.gitignore` 구성
 - `app/` 폴더 구조 생성 (main.py 포함)
 <br><br>
@@ -46,7 +46,7 @@
 <summary></summary>
 <div markdown="1">
 
-### 기본 폴더 구조
+### 기본 디렉토리 구조
 ```markdown
 WMS_FastApi/
 │
