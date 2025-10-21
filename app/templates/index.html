@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WASD_WMS</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+<!--헤더-->
+    <header class="header"></header>
+
+<!--메인-->
+    <main>
+        <div id="sidebar" class="sidebar">
+            <p class="WASD">WASD</p>
+            <a href="/index">대시보드</a>
+            <a href="/stocks">물품 현황</a>
+            <a href="#">로봇 관리</a>
+            <a href="#">작업 로그</a>
+            <a href="#">관리자</a>
+        </div>
+
+        <div id="main_screen" class="main_screen">
+
+            <div class="topbar">
+                <img id="togglebtn" src="/static/images/slide01.png" alt="슬라이드바">
+
+                <div class="user_menu_wrapper">
+                    <img id="user_icon" src="/static/images/user01.png" alt="유저아이콘">
+                    <div id="user_menu" class="user_menu">
+                        <p><strong>아이디:</strong> 예시</p>
+                        <p><strong>이름:</strong> 예시</p>
+                        <button id="logout_btn">로그아웃</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="first_line">
+                <div class="order">
+                    <div class="search_bar">
+                        <input class="search_input" placeholder="   상품명을 입력하세요" type="text">
+                        <button class="search_btn">검색</button>
+                    </div>
+                    <div class="buttons">
+                        <button>입고</button>
+                        <button>출고</button>
+                    </div>
+                </div>
+
+                <div class="map">
+                    <p>지도</p>
+                </div>
+            </div>
+
+            <div class="second_line">
+                <div class="log">
+                    <p class="log_t">작업 내역</p>
+                    <p class="log_text">작업 내역 나오는 곳</p>
+                    <a href="/logs">로그 데이터 확인하기</a>
+                </div>
+
+                <div class="camera">
+                    <p>카메라 캡쳐</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+<!--푸터-->
+    <footer></footer>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
