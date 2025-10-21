@@ -809,3 +809,153 @@ app.include_router(log_router.router)
 7. `http://127.0.0.1:8000/logs`에서 확인 또는 `Swagger`에서 확인
 
 </div></details>
+
+## 5. 정적 파일, 템플릿 구조 세팅
+
+**HTML 템플릿과 static 표시 (프론트엔드)**
+
+<details>
+<summary></summary>
+<div markdown="1">
+
+### 구조
+
+```bash
+├── static/                  # 정적 파일
+│   ├── css/
+│   │   └── style.css
+│   ├── js/
+│   │   └── main.js
+│   └── images/
+│       └── logo.png
+│
+└── templates/               # HTML 템플릿
+    ├── index.html
+    └── logs.html
+```
+---
+### `templates/index.html`
+
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WASD_WMS</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+<!--헤더-->
+    <header class="header"></header>
+
+<!--메인-->
+    <main>
+        <div id="sidebar" class="sidebar">
+            <p class="WASD">WASD</p>
+            <a href="/index">대시보드</a>
+            <a href="/stocks">물품 현황</a>
+            <a href="#">로봇 관리</a>
+            <a href="#">작업 로그</a>
+            <a href="#">관리자</a>
+        </div>
+
+        <div id="main_screen" class="main_screen">
+
+            <div class="topbar">
+                <img id="togglebtn" src="/static/images/slide01.png" alt="슬라이드바">
+
+                <div class="user_menu_wrapper">
+                    <img id="user_icon" src="/static/images/user01.png" alt="유저아이콘">
+                    <div id="user_menu" class="user_menu">
+                        <p><strong>아이디:</strong> 예시</p>
+                        <p><strong>이름:</strong> 예시</p>
+                        <button id="logout_btn">로그아웃</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="first_line">
+                <div class="order">
+                    <div class="search_bar">
+                        <input class="search_input" placeholder="   상품명을 입력하세요" type="text">
+                        <button class="search_btn">검색</button>
+                    </div>
+                    <div class="buttons">
+                        <button>입고</button>
+                        <button>출고</button>
+                    </div>
+                </div>
+
+                <div class="map">
+                    <p>지도</p>
+                </div>
+            </div>
+
+            <div class="second_line">
+                <div class="log">
+                    <p class="log_t">작업 내역</p>
+                    <p class="log_text">작업 내역 나오는 곳</p>
+                    <a href="/logs">로그 데이터 확인하기</a>
+                </div>
+
+                <div class="camera">
+                    <p>카메라 캡쳐</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+<!--푸터-->
+    <footer></footer>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
+```
+
+### `static/css/style.css`, `static/js/main.js`, `static/images/[이미지파일]` 추가
+---
+
+### `main.py` 수정
+
+```python
+from fastapi import FastAPI, Request
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+from app.core.config import settings
+from app.routers import log_router
+
+app = FastAPI(title="WMS FastAPI Server", debug=settings.DEBUG)
+
+# 정적 파일 등록 (/static 경로로 접근 가능)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# 템플릿 등록
+templates = Jinja2Templates(directory="app/templates")
+
+# 라우터 등록
+app.include_router(log_router.router)
+
+
+# 메인 페이지 (HTML 렌더링)
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request, "title": "WMS Dashboard"})
+```
+---
+### 테스트
+1. 서버 실행
+```bash
+uvicorn app.main:app --reload
+```
+2. 브라우저 접속
+```cpp
+http://127.0.0.1:8000/
+```
+
+3. `index.html`접속 후, `/static`파일 로드 확인 
+
+</div></details>
