@@ -137,3 +137,8 @@ class LogBase(BaseModel):
 - 모든 파일을 `snake_case`로 통일
 
 ### **문제 해결**
+
+## 251021
+
+### 1. 로컬과 EC2 연결 안됨
+
