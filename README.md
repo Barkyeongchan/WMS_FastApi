@@ -18,39 +18,24 @@
 - `Base.metadata.create_all()`로 테이블 생성 테스트
 <br><br>
 
-3. CRUD 레이어
+3. CRUD & Service 계층
 - Spring의 `repository/` 기능을 `crud/` 폴더로 옮김
 - SQLAlchemy ORM 기반의 CRUD 함수 작성
 - 예: `create_stock()`, `get_logs()`, `update_robot_status()` 등
-<br><br>
-
-4. Service 계층
 - Spring의 `@Service` 클래스 → `services/` 폴더
 - 비즈니스 로직을 Python 함수로 변환
 - 예: `StocksService.java` → `stock_service.py`
 <br><br>
 
-5. Router(API 엔드포인트)
+4. Router(API 엔드포인트)
 - Spring의 `Controller` → FastAPI `routers/`
 - 예: `/api/stocks` → `@router.get("/stocks")`
 - Swagger 자동 문서화 확인 (`/docs`)
 <br><br>
 
-6. WebSocket + ROS 연동
-- 기존 `WebSocketServer.java`, `RosBridgeClient.java` 이식
-- FastAPI의 `WebSocket` 객체로 ROS bridge 연결
-- ROS 메시지 → FastAPI WebSocket → 브라우저 송수신
-<br><br>
-
-7. 정적 리소스 & 템플릿
+5. 정적 리소스 & 템플릿
 - Spring `resources/templates/` → FastAPI의 `Jinja2Templates`
 - 기존 JS/CSS 그대로 사용
-<br><br>
-
-8. 환경 설정 & 실행
-- `.env` + `config.py`로 환경 변수 관리
-- `uvicorn app.main:app --reload` 실행
-- Swagger + DB 연결 + WebSocket 확인
 <br><br>
 
 ## 1. 환경 세팅
