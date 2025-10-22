@@ -234,3 +234,18 @@ main{
     text-align: left;
     padding-left: 10px;
 }
+
+.control-btn {
+  background-color: #666;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 15px;
+  transition: background 0.2s;
+}
+
+.control-btn.active {
+  background-color: #2ecc71; /* 녹색 */
+}
