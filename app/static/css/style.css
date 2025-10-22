@@ -224,3 +224,13 @@ main{
 .camera{
     flex: 1;
 }
+
+#pose_output {
+    display: block;
+    font-family: monospace;
+    font-size: 18px;
+    color: #0a5;
+    margin-top: 10px;
+    text-align: left;
+    padding-left: 10px;
+}
