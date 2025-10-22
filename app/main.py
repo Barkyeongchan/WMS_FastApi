@@ -31,11 +31,13 @@ app.include_router(log_router.router)
 async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request, "title": "WMS Dashboard"})
 
-active_connections = []
+active_connections = []  # 현재 연결된 클라이언트 목록
+latest_data = None       # 최근 수신한 ROS 데이터 저장
 
 # WebSocket 엔드포인트 추가
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    global latest_data
     await websocket.accept()
     active_connections.append(websocket)  # 연결 추가
     print("[EC2] WebSocket connected")
@@ -44,6 +46,15 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             print(f"[EC2] 수신 데이터 ← {data}")
+
+            # 초기 데이터 요청(init_request)이 오면 최근 데이터 전송
+            if data == "init_request" and latest_data:
+                await websocket.send_text(latest_data)
+                print("[EC2] 초기 데이터 전송 → 클라이언트")
+                continue
+
+            # ROS → EC2로 들어오는 최신 데이터 저장
+            latest_data = data
 
             # 모든 클라이언트에 브로드캐스트
             for conn in list(active_connections):  # 복사본 사용
@@ -55,8 +66,6 @@ async def websocket_endpoint(websocket: WebSocket):
                         active_connections.remove(conn)
 
     except WebSocketDisconnect:
-        print("[EC2] ❌ WebSocket disconnected")
+        print("[EC2] WebSocket disconnected")
         if websocket in active_connections:
             active_connections.remove(websocket)
-        else:
-            print("[EC2] ⚠️ 연결이 이미 제거되어 무시됨")
