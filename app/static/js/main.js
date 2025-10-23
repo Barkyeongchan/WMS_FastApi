@@ -43,13 +43,16 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("[CLIENT] Received:", event.data);
 
         try {
-            const data = JSON.parse(event.data);
+            const msg = JSON.parse(event.data);
             const poseEl = document.querySelector(".log_text");
 
-            // pose 값 표시
-            poseEl.innerText =
-                `X: ${data.x}, Y: ${data.y}, θ: ${data.theta}, ` +
-                `Linear: ${data.linear_velocity}, Angular: ${data.angular_velocity}`;
+            // pose 데이터일 때만 표시
+            if (msg.type === "turtle_pose" && msg.payload) {
+                const p = msg.payload;
+                poseEl.innerText =
+                    `X: ${p.x}, Y: ${p.y}, θ: ${p.theta}, ` +
+                    `Linear: ${p.linear_velocity}, Angular: ${p.angular_velocity}`;
+            }
         } catch {
             console.warn("[CLIENT] Non-JSON message:", event.data);
         }
@@ -84,27 +87,31 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener("keydown", (event) => {
         if (!controlMode) return; // 조종 모드 OFF면 무시
 
-        let cmd = null;
+        let command = null;
 
         switch (event.key) {
             case "ArrowUp":
-                cmd = { type: "control", command: "up" };
+                command = "up";
                 break;
             case "ArrowDown":
-                cmd = { type: "control", command: "down" };
+                command = "down";
                 break;
             case "ArrowLeft":
-                cmd = { type: "control", command: "left" };
+                command = "left";
                 break;
             case "ArrowRight":
-                cmd = { type: "control", command: "right" };
+                command = "right";
                 break;
         }
 
         // WebSocket 연결이 유지 중일 때만 전송
-        if (cmd && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify(cmd));
-            console.log("[CLIENT] →", cmd);
+        if (command && ws.readyState === WebSocket.OPEN) {
+            const msg = {
+                type: "control",
+                payload: { command: command }
+            };
+            ws.send(JSON.stringify(msg));
+            console.log("[CLIENT] →", msg);
         }
     });
 });

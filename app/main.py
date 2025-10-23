@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.routers import log_router
+import json
 
 app = FastAPI(title="WMS FastAPI Server", debug=settings.DEBUG)
 
@@ -31,6 +32,7 @@ app.include_router(log_router.router)
 async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request, "title": "WMS Dashboard"})
 
+
 active_connections = []  # 현재 연결된 클라이언트 목록
 latest_data = None       # 최근 수신한 ROS 데이터 저장
 
@@ -47,13 +49,24 @@ async def websocket_endpoint(websocket: WebSocket):
             data = await websocket.receive_text()
             print(f"[EC2] 수신 데이터 ← {data}")
 
-            # 초기 데이터 요청(init_request)이 오면 최근 데이터 전송
-            if data == "init_request" and latest_data:
-                await websocket.send_text(latest_data)
-                print("[EC2] 초기 데이터 전송 → 클라이언트")
+            # JSON 형태 검사 (init_request 등 문자열은 제외)
+            if not data or not data.startswith("{"):
+                if data == "init_request" and latest_data:
+                    # 초기 데이터 요청 처리
+                    await websocket.send_text(latest_data)
+                    print("[EC2] 초기 데이터 전송 → 클라이언트")
+                else:
+                    print(f"[EC2] 비JSON 데이터 무시: {data}")
                 continue
 
-            # ROS → EC2로 들어오는 최신 데이터 저장
+            # JSON 파싱
+            try:
+                msg = json.loads(data)
+            except json.JSONDecodeError:
+                print(f"[EC2] JSON 파싱 실패: {data}")
+                continue
+
+            # 정상적인 JSON이면 최근 데이터로 저장
             latest_data = data
 
             # 모든 클라이언트에 브로드캐스트
@@ -61,9 +74,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 try:
                     await conn.send_text(data)
                 except Exception:
-                    # 죽은 소켓은 제거
                     if conn in active_connections:
                         active_connections.remove(conn)
+                        print("[EC2] 연결 해제된 클라이언트 제거")
 
     except WebSocketDisconnect:
         print("[EC2] WebSocket disconnected")
