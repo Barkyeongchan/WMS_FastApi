@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.routers import log_router
 import json
+from app.routers import page_router
 
 app = FastAPI(title="WMS FastAPI Server", debug=settings.DEBUG)
 
@@ -26,6 +27,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 # 라우터 등록
 app.include_router(log_router.router)
+app.include_router(page_router.router)
 
 # 메인 페이지 (HTML 렌더링)
 @app.get("/", response_class=HTMLResponse)
