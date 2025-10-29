@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WASD_WMS | 작업 로그</title>
+
+  <link rel="stylesheet" href="static/css/style.css" />
+  <link rel="stylesheet" href="static/css/log.css" />
+</head>
+
+<body>
+  <main>
+    <!-- 사이드바 -->
+    <div id="sidebar" class="sidebar">
+      <p class="WASD">WASD</p>
+      <a href="index">대시보드</a>
+      <a href="stock">물품 현황</a>
+      <a href="robot">로봇 관리</a>
+      <a href="log" class="active">작업 로그</a>
+    </div>
+
+    <!-- 메인화면 -->
+    <div id="main_screen" class="main_screen">
+
+      <!-- 로그 메인 컨텐츠 -->
+      <div class="log_body">
+        <div class="log_section">
+          <p class="section_title">작업 로그</p>
+
+          <div class="log_table_wrapper">
+            <table class="log_table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>로봇 이름</th>
+                  <th>로봇 IP</th>
+                  <th>핀 이름</th>
+                  <th>좌표</th>
+                  <th>카테고리</th>
+                  <th>제품 이름</th>
+                  <th>제품 ID</th>
+                  <th>수량</th>
+                  <th>작업</th>
+                  <th>발생 시각</th>
+                </tr>
+              </thead>
+              <tbody id="log_table_body">
+                <!-- log.js에서 동적으로 삽입 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="static/js/main.js"></script>
+  <script src="static/js/log.js"></script>
+</body>
+</html>

@@ -1,76 +1,120 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WASD_WMS</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WASD_WMS</title>
+  <link rel="stylesheet" href="static/css/style.css" />
 </head>
 
 <body>
-<!--헤더-->
-    <header class="header"></header>
+  <main>
+    <!-- 사이드바 -->
+    <div id="sidebar" class="sidebar">
+      <p class="WASD">WASD</p>
+      <a href="index" class="active">대시보드</a>
+      <a href="stock">물품 현황</a>
+      <a href="robot">로봇 관리</a>
+      <a href="log">작업 로그</a>
+    </div>
 
-<!--메인-->
-    <main>
-        <div id="sidebar" class="sidebar">
-            <p class="WASD">WASD</p>
-            <a href="/index">대시보드</a>
-            <a href="/stocks">물품 현황</a>
-            <a href="#">로봇 관리</a>
-            <a href="#">작업 로그</a>
-            <a href="#">관리자</a>
+    <!-- 메인화면 -->
+    <div id="main_screen" class="main_screen">
+
+      <!-- 메인 내용 전체 -->
+      <div class="main_body">
+        <!-- 첫 번째 라인 -->
+        <div class="first_line">
+          <div class="order">
+            <!-- 검색 -->
+            <div class="search_bar">
+              <input class="search_input" id="search_input" placeholder="   상품명을 입력하세요" type="text" />
+              <button class="search_btn" id="search_btn">검색</button>
+            </div>
+
+            <!-- 좌우 분할 -->
+            <div class="order_body">
+              <!-- 좌: 검색 결과 -->
+              <div class="order_left">
+                <table class="product_table">
+                  <thead>
+                    <tr>
+                      <th>상품명</th>
+                      <th>위치</th>
+                      <th>수량</th>
+                    </tr>
+                  </thead>
+                  <tbody id="result_body">
+                    <!-- JS 결과 삽입 -->
+                  </tbody>
+                </table>
+                <p class="empty_hint" id="empty_hint">검색 결과가 없습니다.</p>
+              </div>
+
+              <!-- 우: 조정 패널 -->
+              <div class="order_right">
+                <div class="info_box">
+                  <p class="info_title">선택된 상품</p>
+                  <p class="info_value" id="picked_name">없음</p>
+                </div>
+
+                <div class="info_box">
+                  <p class="info_title">변경 수량</p>
+                  <input id="delta_qty" type="number" value="1" min="1" class="delta_input" />
+                </div>
+
+                <div class="buttons">
+                  <button class="input_btn" id="btn_in">입고</button>
+                  <button class="output_btn" id="btn_out">출고</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="map">
+            <p>지도</p>
+            <div class="map_content">
+              <p>※ 매핑된 지도 표시 예정</p>
+            </div>
+          </div>
         </div>
 
-        <div id="main_screen" class="main_screen">
-
-            <div class="topbar">
-                <img id="togglebtn" src="/static/images/slide01.png" alt="슬라이드바">
-
-                <div class="user_menu_wrapper">
-                    <img id="user_icon" src="/static/images/user01.png" alt="유저아이콘">
-                    <div id="user_menu" class="user_menu">
-                        <p><strong>아이디:</strong> 예시</p>
-                        <p><strong>이름:</strong> 예시</p>
-                        <button id="logout_btn">로그아웃</button>
-                    </div>
-                </div>
+        <!-- 두 번째 라인 (2:1:2 비율) -->
+        <div class="second_line">
+          <!-- 작업 내역 -->
+          <div class="log">
+            <p class="log_t">작업 내역</p>
+            <div class="log_text_wrapper">
+              <p class="log_text">※ 작업 내역이 여기에 표시됩니다.</p>
             </div>
+          </div>
 
-            <div class="first_line">
-                <div class="order">
-                    <div class="search_bar">
-                        <input class="search_input" placeholder="   상품명을 입력하세요" type="text">
-                        <button class="search_btn">검색</button>
-                    </div>
-                    <div class="buttons">
-                        <button>입고</button>
-                        <button>출고</button>
-                    </div>
+          <!-- 로봇 상태 -->
+          <div class="robot_status">
+            <p>로봇 상태</p>
+            <div class="robot_list">
+              <div class="robot_card">
+                <p class="robot_name">R-01</p>
+                <div class="battery_bar">
+                  <div class="battery_fill" style="width: 80%;"></div>
                 </div>
-
-                <div class="map">
-                    <p>지도</p>
-                </div>
+                <p class="battery_label">80%</p>
+              </div>
             </div>
+          </div>
 
-            <div class="second_line">
-                <div class="log">
-                    <p class="log_t">작업 내역</p>
-                    <button id="control_toggle" class="control-btn">조종 모드 OFF</button>
-                    <p class="log_text">작업 내역 나오는 곳</p>
-                </div>
-
-                <div class="camera">
-                    <p>카메라 캡쳐</p>
-                </div>
+          <!-- 카메라 -->
+          <div class="camera">
+            <p>카메라 캡쳐</p>
+            <div class="camera_content">
+              <p>※ 실시간 영상 표시 예정</p>
             </div>
+          </div>
         </div>
-    </main>
+      </div>
+    </div>
+  </main>
 
-<!--푸터-->
-    <footer></footer>
-
-    <script src="/static/js/main.js"></script>
+  <script src="static/js/main.js"></script>
 </body>
 </html>

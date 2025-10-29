@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WASD_WMS | 로봇 관리</title>
+
+  <link rel="stylesheet" href="static/css/style.css" />
+  <link rel="stylesheet" href="static/css/robot.css" />
+</head>
+
+<body>
+<main>
+  <div id="sidebar" class="sidebar">
+    <p class="WASD">WASD</p>
+    <a href="index">대시보드</a>
+    <a href="stock">물품 현황</a>
+    <a href="robot" class="active">로봇 관리</a>
+    <a href="log">작업 로그</a>
+  </div>
+
+  <div id="main_screen" class="main_screen">
+
+    <div class="main_body">
+      <div class="left_panel">
+        <!-- 로봇 상태 -->
+        <div class="status_section">
+          <div class="robot_card">
+            <p class="section_title">
+              로봇 상태
+              <button id="open_modal_btn" class="add_robot_btn">+/−</button>
+            </p>
+
+              <div class="robot_header">
+                <select id="robot_select" class="robot_select">
+                  <option value="Robot_01">Robot_01</option>
+                  <option value="Robot_02">Robot_02</option>
+                  <option value="Robot_03">Robot_03</option>
+                </select>
+                <span class="status_tag active">작동중</span>
+              </div>
+
+              <div class="robot_body">
+                <div class="status_row">
+                  <span class="label">모드</span>
+                  <span class="value mode auto">자동</span>
+                </div>
+
+                <div class="status_row">
+                  <span class="label">위치</span>
+                  <span class="value">(12.3, 8.1)</span>
+                </div>
+
+                <div class="status_row gauge_row">
+                  <span class="label">속도</span>
+                  <div class="bar_wrapper">
+                    <div class="bar_fill speed" style="width: 45%;"></div>
+                  </div>
+                  <span class="value small">0.45 m/s</span>
+                </div>
+
+                <div class="status_row gauge_row">
+                  <span class="label">배터리</span>
+                  <div class="bar_wrapper battery">
+                    <div class="bar_fill battery" style="width: 87%;"></div>
+                  </div>
+                  <span class="value small">87%</span>
+                </div>
+
+                <div class="status_row">
+                  <span class="label">미션</span>
+                  <span class="value mission">A1 → B2 이동 중</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 로봇 제어 -->
+          <div class="control_panel">
+            <p class="section_title">로봇 제어</p>
+
+            <div class="control_wrapper">
+              <!-- 왼쪽 제어 -->
+              <div class="control_left">
+                <!-- 속도 슬라이더 -->
+                <div class="speed_control">
+                  <label for="speed_slider">속도 조절</label>
+                  <input type="range" id="speed_slider" min="1" max="3" step="1" value="1">
+                  <div class="slider_labels">
+                    <span>1단</span>
+                    <span>2단</span>
+                    <span>3단</span>
+                  </div>
+                </div>
+
+                <div class="main_controls">
+                  <button class="control_btn return">대기장소 복귀</button>
+                  <button class="control_btn stop">비상 정지</button>
+                </div>
+              </div>
+
+              <!-- 오른쪽 제어 -->
+              <div class="control_right">
+                <div class="mode_switch">
+                  <button id="auto_mode" class="mode_btn active">자동 모드</button>
+                  <button id="manual_mode" class="mode_btn">수동 모드</button>
+                </div>
+
+                <div id="manual_lock" class="manual_lock"></div>
+
+                <div class="direction_pad">
+                  <div class="row">
+                    <button class="dir_btn up" disabled>▲</button>
+                  </div>
+                  <div class="row">
+                    <button class="dir_btn left" disabled>◀</button>
+                    <button class="dir_btn stop_center" disabled>■</button>
+                    <button class="dir_btn right" disabled>▶</button>
+                  </div>
+                  <div class="row">
+                    <button class="dir_btn down" disabled>▼</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 지도 -->
+        <div class="right_panel">
+          <div class="map_section">
+            <p class="section_title">실시간 지도</p>
+            <div class="map_canvas">
+              <p>※ SLAM 기반 실시간 지도 표시 예정</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ✅ 모달 추가 (기존 절대 변경x) -->
+  <div id="robot_modal" class="modal hidden">
+    <div class="modal_content">
+      <p class="modal_title">로봇 추가 / 제거</p>
+
+      <div class="modal_section">
+        <label>로봇 이름</label>
+        <input type="text" id="robot_name_input" placeholder="예: R-01">
+
+        <label>로봇 IP</label>
+        <input type="text" id="robot_ip_input" placeholder="예: 192.168.0.10">
+
+        <button id="btn_add_robot" class="modal_btn add">추가</button>
+      </div>
+
+      <hr>
+
+      <div class="modal_section">
+        <label>삭제할 로봇 선택</label>
+        <select id="robot_select"></select>
+
+        <button id="btn_delete_robot" class="modal_btn delete">삭제</button>
+      </div>
+
+      <button id="modal_close_btn" class="modal_close">닫기</button>
+    </div>
+  </div>
+
+  <script src="static/js/main.js"></script>
+  <script src="static/js/robot.js"></script>
+</body>
+</html>

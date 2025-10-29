@@ -1,0 +1,399 @@
+/* ---------------- 상품 등록 ---------------- */
+.product {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  margin: 20px;
+  overflow: visible;
+}
+
+.product_add {
+  background-color: white;
+  padding: 20px;
+  margin: 0 auto 20px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  position: relative;
+  overflow: visible;
+}
+
+.product_add input,
+.product_add button {
+  height: 35px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0 10px;
+  font-size: 14px;
+}
+
+.input_item {
+  width: 150px;
+}
+
+/* 버튼 */
+.add_btn {
+  background-color: #407185;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.add_btn:hover {
+  background-color: #2e5563;
+}
+
+.delete_btn {
+  background-color: #919191;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.delete_btn:hover {
+  background-color: #707070;
+}
+
+/* 드롭다운 */
+.dropdown {
+  position: relative;
+  display: inline-block;
+  z-index: 5;
+}
+.dropdown_cate,
+.dropdown_pin {
+  background-color: #f8f8f8;
+  cursor: pointer;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  height: 35px;
+  padding: 0 40px 0 12px;
+  font-size: 14px;
+  position: relative;
+  color: #333;
+  line-height: 35px;
+  min-width: 170px;
+  text-align: left;
+  box-sizing: border-box;
+}
+.dropdown_cate::after,
+.dropdown_pin::after {
+  content: "▼";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: #666;
+  pointer-events: none;
+}
+
+.dropdown_menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  min-width: 100%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 1000;
+  overflow: hidden;
+}
+.dropdown_menu p {
+  margin: 0;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.dropdown_menu p:hover {
+  background-color: #f0f0f0;
+}
+
+/* ---------------- 상품 리스트 + 오른쪽 패널 ---------------- */
+.product_section {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  height: 100%;
+}
+
+/* ✅ 상품 리스트 (로그 스타일 적용 버전) */
+.product_list {
+  flex: 4;
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 상단 제목 영역 */
+.list_title_wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #ddd;
+  padding-bottom: 8px;
+  margin-bottom: 15px;
+  gap: 12px; /* ✅ 검색창 간격 확보 */
+}
+
+.list_title {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #333;
+  margin: 0;
+}
+
+.list_buttons button {
+  margin-left: 8px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: white;
+  transition: background 0.2s;
+}
+.edit_btn {
+  background-color: #407185;
+}
+.edit_btn:hover {
+  background-color: #2e5563;
+}
+
+/* ============================
+   🔹 상품 리스트 (log.css 스타일 통합)
+============================ */
+.stock_table_wrapper {
+  flex: 1;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 테이블 기본 설정 */
+.stock_table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  color: #333;
+  table-layout: fixed;
+}
+
+/* ✅ 헤더 색상: 진한 회색, 흰 글씨 */
+.stock_table thead {
+  background-color: #f0f1f3;
+  color: #333;
+  font-weight: 700;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* ✅ tbody만 스크롤 가능 */
+.stock_table_wrapper tbody {
+  display: block;
+  overflow-y: auto;
+  height: 550px; /* 원하는 높이로 조정 가능 */
+}
+
+/* 행 폭 균등 정렬 */
+.stock_table thead tr,
+.stock_table tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+/* ✅ 셀 스타일 */
+.stock_table th,
+.stock_table td {
+  padding: 12px;
+  border-bottom: 1px solid #e0e0e0;
+  text-align: center;
+  word-break: keep-all;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ✅ 교차 색상 줄무늬 */
+.stock_table tbody tr:nth-child(odd) {
+  background-color: #ffffff;   /* 흰색 */
+}
+.stock_table tbody tr:nth-child(even) {
+  background-color: #f7f7f7;   /* 연회색 */
+}
+
+/* ✅ hover 효과 */
+.stock_table tbody tr:hover {
+  background-color: #eaf0ff;   /* log.css처럼 파란빛 강조 */
+}
+
+/* 체크박스 스타일 */
+.stock_table input[type="checkbox"] {
+  transform: scale(1.2);
+  cursor: pointer;
+}
+
+/* ✅ 스크롤바 디자인 (log.css 스타일 강화) */
+.stock_table_wrapper tbody::-webkit-scrollbar {
+  width: 8px;
+}
+.stock_table_wrapper tbody::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+.stock_table_wrapper tbody::-webkit-scrollbar-thumb {
+  background-color: #b5b5b5;
+  border-radius: 4px;
+  transition: background 0.3s;
+}
+.stock_table_wrapper tbody::-webkit-scrollbar-thumb:hover {
+  background-color: #7a7a7a;
+}
+
+/* ✅ 전체 영역 부드러운 그림자 유지 */
+.product_list {
+  flex: 4;
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+}
+
+.search_bar {
+  flex: 1;
+  display: flex;
+  justify-content: right;
+  border: none;
+}
+
+.search_bar input {
+  width: 240px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+.search_bar input:focus {
+  outline: none;
+  border-color: #407185;
+  box-shadow: 0 0 3px rgba(64, 113, 133, 0.3);
+}
+
+/* 오른쪽 관리 패널 */
+.side_panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 공통 패널 */
+.category_panel,
+.pin_panel {
+  background-color: white;
+  border-radius: 6px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.category_panel h3,
+.pin_panel h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  text-align: left;
+  font-size: 16px;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 5px;
+}
+
+/* 입력창 + 버튼 */
+.category_panel input,
+.pin_panel input {
+  height: 35px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0 10px;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.button_row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 12px;
+}
+.button_row button {
+  flex: 1;
+  height: 35px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  color: #fff;
+  transition: background 0.2s;
+}
+.button_row .add_btn {
+  background-color: #407185;
+}
+.button_row .add_btn:hover {
+  background-color: #2e5563;
+}
+.button_row .delete_btn {
+  background-color: #919191;
+}
+.button_row .delete_btn:hover {
+  background-color: #707070;
+}
+
+/* 리스트 영역 스크롤 */
+.category_list,
+.pin_list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  overflow-y: auto;
+  max-height: 200px;
+}
+.category_list li,
+.pin_list li {
+  padding: 4px 12px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+.category_list li input,
+.pin_list li input {
+  transform: scale(1.1);
+  margin: 0;
+  cursor: pointer;
+}
+.category_list li:hover,
+.pin_list li:hover {
+  background-color: #f9f9f9;
+}

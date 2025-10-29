@@ -1,0 +1,447 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #ededed;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+main {
+  flex: 1;
+  display: flex;
+  height: 100%;
+}
+
+.main_screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.main_body {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  padding: 20px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.left_panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 0.4;
+  min-width: 400px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.right_panel {
+  flex: 0.6;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.section_title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #333;
+  margin-top: 0;
+  position: relative;
+  padding-bottom: 6px;
+  display: flex;
+  justify-content: space-between; /* ✅ 제목과 버튼 양 끝 배치 */
+  align-items: center;
+}
+
+.section_title::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 2px;
+  background: #dfe4ea;
+  border-radius: 1px;
+}
+
+.robot_card {
+  background-color: #fff;
+  border-radius: 10px;
+  padding: 18px 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  flex: 1;
+}
+
+.robot_header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.status_tag {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fff;
+}
+.status_tag.active { background-color: #2d89ef; }
+.status_tag.idle { background-color: #7f8c8d; }
+
+.status_row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 8px 0;
+}
+
+.label { font-size: 0.9rem; color: #555; width: 80px; }
+.value { font-weight: 600; color: #2c3e50; }
+.value.small { font-size: 0.85rem; color: #555; }
+.value.mode.auto {
+  background: #2ecc71; color: #fff; padding: 4px 10px; border-radius: 6px;
+}
+.value.mode.manual {
+  background: #f39c12; color: #fff; padding: 4px 10px; border-radius: 6px;
+}
+
+.gauge_row { gap: 10px; }
+.bar_wrapper {
+  flex: 1; height: 8px; background-color: #ecf0f1;
+  border-radius: 5px; overflow: hidden; margin-right: 10px;
+}
+.bar_fill {
+  height: 100%; border-radius: 5px; transition: width 0.3s ease;
+}
+.bar_fill.speed { background: linear-gradient(90deg, #74b9ff, #0984e3); }
+.bar_fill.battery { background: linear-gradient(90deg, #2ecc71, #27ae60); }
+
+.control_panel {
+  background: white;
+  border-radius: 10px;
+  padding: 22px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.control_wrapper {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  flex: 1;
+}
+
+.control_left,
+.control_right {
+  flex: 1;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.speed_control {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 25px;
+}
+
+.speed_control label {
+  font-weight: 600;
+  color: #2f3542;
+}
+
+#speed_slider {
+  width: 100%;
+  -webkit-appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: #dcdde1;
+  outline: none;
+  margin-top: 10px;
+}
+
+#speed_slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  background: #2f3542;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+#speed_slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.slider_labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.slider_labels span {
+  font-size: 0.8rem;
+  color: #707b7c;
+  font-weight: 600;
+  width: 25%;
+  text-align: center;
+  position: relative;
+}
+
+.slider_labels span:nth-child(3) {
+  transform: translateX(20px);
+}
+
+.main_controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 25px;
+}
+
+.control_btn {
+  flex: 1;
+  padding: 10px 0;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #fff;
+  transition: all 0.2s ease;
+}
+
+.control_btn.return { background-color: #1e8449; }
+.control_btn.stop { background-color: #c0392b; }
+.control_btn:hover { opacity: 0.9; }
+
+.mode_switch {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.mode_btn {
+  flex: 1;
+  padding: 10px 0;
+  border: 1px solid #dfe4ea;
+  border-radius: 6px;
+  background-color: #f0f1f2;
+  font-weight: 600;
+  color: #2f3542;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mode_btn.active {
+  background-color: #4b7bec;
+  color: #fff;
+  border-color: #4b7bec;
+}
+
+.mode_btn:hover:not(.active) {
+  background-color: #e5e7ea;
+}
+
+.direction_pad {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.direction_pad .row { display: flex; gap: 8px; }
+
+.dir_btn {
+  width: 55px; height: 55px;
+  border: none;
+  border-radius: 6px;
+  background-color: #ced6e0;
+  color: #fff;
+  font-size: 1.2rem;
+  cursor: not-allowed;
+  transition: all 0.2s ease;
+}
+
+.dir_btn.active { background-color: #4b7bec; cursor: pointer; }
+
+.dir_btn.stop_center { background-color: #c0392b; }
+
+.dir_btn:disabled { background-color: #d6d8da; opacity: 0.6; }
+
+.direction_pad::after {
+  content: "⚙ 현재 자동 모드입니다.\A수동 모드로 전환하면 조작할 수 있습니다.";
+  white-space: pre-line;
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.2);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.control_right .manual_lock.active ~ .direction_pad::after {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.map_section {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.map_canvas {
+  flex: 1;
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #777;
+}
+
+/* ✅ 모달 */
+.modal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.modal.hidden { display: none; }
+
+.modal_content {
+  width: 350px;
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(
+0,0,0,0.2);
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.modal_title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.modal_section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.modal_section input,
+.modal_section select {
+  padding: 8px 10px;
+  border: 1px solid #dcdde1;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.modal_btn {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal_btn.add { background: #2ecc71; }
+.modal_btn.delete { background: #c0392b; }
+.modal_btn:hover { opacity: 0.85; }
+
+.modal_close {
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px;
+  background: #7f8c8d;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ✅ 로봇 추가 버튼 */
+.add_robot_btn {
+  font-size: 1rem;
+  background: #868686;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.add_robot_btn:hover {
+  background: #3867d6;
+}
+
+.robot_select {
+  padding: 6px 10px;
+  background: #fff;
+  border: 1px solid #dfe4ea;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: #2c3e50;
+}
+
+.robot_select:focus {
+  outline: none;
+  border-color: #4b7bec;
+}
