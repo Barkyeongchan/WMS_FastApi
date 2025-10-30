@@ -278,7 +278,7 @@
 .search_bar {
   flex: 1;
   display: flex;
-  justify-content: right;
+  justify-content: center;
   border: none;
 }
 
