@@ -5,18 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WASD_WMS | 물품 현황</title>
 
-  <link rel="stylesheet" href="static/css/style.css" />
-  <link rel="stylesheet" href="static/css/stock.css" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <link rel="stylesheet" href="/static/css/stock.css" />
 </head>
 
 <body>
   <main>
     <div id="sidebar" class="sidebar">
       <p class="WASD">WASD</p>
-      <a href="index">대시보드</a>
-      <a href="stock" class="active">물품 현황</a>
-      <a href="robot">로봇 관리</a>
-      <a href="log">작업 로그</a>
+      <a href="/index">대시보드</a>
+      <a href="/stock" class="active">물품 현황</a>
+      <a href="/robot">로봇 관리</a>
+      <a href="/log">작업 로그</a>
     </div>
 
     <div id="main_screen" class="main_screen">
@@ -30,18 +30,12 @@
             <div class="dropdown">
               <button class="dropdown_cate">카테고리</button>
               <div class="dropdown_menu">
-                <p>전자제품</p>
-                <p>생활용품</p>
-                <p>식품</p>
               </div>
             </div>
             <input type="number" placeholder="수량" class="input_item" />
             <div class="dropdown">
               <button class="dropdown_pin">위치</button>
               <div class="dropdown_menu">
-                <p>A1</p>
-                <p>B2</p>
-                <p>C3</p>
               </div>
             </div>
             <button class="add_btn">등록</button>
@@ -69,6 +63,7 @@
                   <thead>
                     <tr>
                       <th></th>
+                      <th data-sort="stock_id">ID</th>
                       <th data-sort="name">상품명</th>
                       <th data-sort="category">카테고리</th>
                       <th data-sort="qty">수량</th>
@@ -94,9 +89,7 @@
                   <button class="delete_btn">삭제</button>
                 </div>
                 <ul class="category_list">
-                  <li><input type="checkbox" /> 전자제품</li>
-                  <li><input type="checkbox" /> 생활용품</li>
-                  <li><input type="checkbox" /> 식품</li>
+                  <li><input type="checkbox" /></li>
                 </ul>
               </div>
 
@@ -108,9 +101,7 @@
                   <button class="delete_btn">삭제</button>
                 </div>
                 <ul class="pin_list">
-                  <li><input type="checkbox" /> A1</li>
-                  <li><input type="checkbox" /> B2</li>
-                  <li><input type="checkbox" /> C3</li>
+                  <li><input type="checkbox" /></li>
                 </ul>
               </div>
             </div>
@@ -120,7 +111,7 @@
     </div>
   </main>
 
-  <script src="static/js/main.js"></script>
-  <script src="static/js/stock.js"></script>
+  <script src="/static/js/main.js"></script>
+  <script src="/static/js/stock.js"></script>
 </body>
 </html>

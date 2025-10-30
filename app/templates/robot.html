@@ -5,18 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WASD_WMS | 로봇 관리</title>
 
-  <link rel="stylesheet" href="static/css/style.css" />
-  <link rel="stylesheet" href="static/css/robot.css" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <link rel="stylesheet" href="/static/css/robot.css" />
 </head>
 
 <body>
 <main>
   <div id="sidebar" class="sidebar">
     <p class="WASD">WASD</p>
-    <a href="index">대시보드</a>
-    <a href="stock">물품 현황</a>
-    <a href="robot" class="active">로봇 관리</a>
-    <a href="log">작업 로그</a>
+    <a href="/index">대시보드</a>
+    <a href="/stock">물품 현황</a>
+    <a href="/robot" class="active">로봇 관리</a>
+    <a href="/log">작업 로그</a>
   </div>
 
   <div id="main_screen" class="main_screen">
@@ -34,8 +34,7 @@
               <div class="robot_header">
                 <select id="robot_select" class="robot_select">
                   <option value="Robot_01">Robot_01</option>
-                  <option value="Robot_02">Robot_02</option>
-                  <option value="Robot_03">Robot_03</option>
+
                 </select>
                 <span class="status_tag active">작동중</span>
               </div>
@@ -169,7 +168,7 @@
     </div>
   </div>
 
-  <script src="static/js/main.js"></script>
-  <script src="static/js/robot.js"></script>
+  <script src="/static/js/main.js"></script>
+  <script src="/static/js/robot.js"></script>
 </body>
 </html>
