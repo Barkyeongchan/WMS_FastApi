@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import SessionLocal
-from app.models.robot import Robot
+from app.models.robot_model import Robot
 from app.schemas.robot_schema import RobotResponse, RobotCreate, RobotUpdate
 
 router = APIRouter(prefix="/robots", tags=["Robots"])

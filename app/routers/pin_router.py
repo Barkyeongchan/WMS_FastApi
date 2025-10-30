@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import SessionLocal
-from app.models.pin import Pin
+from app.models.pin_model import Pin
 from app.schemas.pin_schema import PinResponse, PinCreate, PinUpdate
 
 router = APIRouter(prefix="/pins", tags=["Pins"])

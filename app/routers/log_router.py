@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import SessionLocal
+from app.models.log_model import Log
 from app.schemas.log_schema import LogResponse, LogCreate, LogUpdate
 from app.crud import log_crud
 

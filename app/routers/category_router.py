@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import SessionLocal
-from app.models.category import Category
+from app.models.category_model import Category
 from app.schemas.category_schema import CategoryResponse, CategoryCreate, CategoryUpdate
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
