@@ -1,23 +1,24 @@
-# app/schemas/stock_schema.py
 from pydantic import BaseModel
+from typing import Optional
 
-class StockBase(BaseModel):
+class StockCreate(BaseModel):
     name: str
-    category: str
-    pin: str
     quantity: int
-
-class StockCreate(StockBase):
-    pass
+    category_id: int
+    pin_id: int
 
 class StockUpdate(BaseModel):
-    name: str | None = None
-    category: str | None = None
-    pin: str | None = None
-    quantity: int | None = None
+    name: Optional[str] = None
+    quantity: Optional[int] = None
+    category_id: Optional[int] = None
+    pin_id: Optional[int] = None
 
-class StockResponse(StockBase):
+class StockResponse(BaseModel):
     id: int
+    name: str
+    quantity: int
+    category_name: str
+    pin_name: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
