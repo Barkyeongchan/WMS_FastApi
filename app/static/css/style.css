@@ -382,3 +382,81 @@ main {
 .sidebar a {
   position: relative;
 }
+
+/* =======================
+   확인 팝업 스타일
+======================= */
+.confirm_popup {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.popup_box {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px 30px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  animation: fadeIn 0.2s ease;
+}
+.popup_box p {
+  margin-bottom: 16px;
+  font-size: 15px;
+  color: #2e404b;
+  font-weight: 600;
+}
+.popup_buttons {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+.popup_btn {
+  min-width: 60px;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.popup_btn.yes { background-color: #435d6d; color: #fff; }
+.popup_btn.no { background-color: #919191; color: #fff; }
+.popup_btn:hover { opacity: 0.9; }
+
+.log_text_wrapper {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  background-color: #fafafa;
+  padding: 10px;
+  font-size: 14px;
+  color: #555;
+  margin-top: 10px;
+}
+.log_entry {
+  margin: 4px 0;
+  padding: 4px 8px;
+  background: #f0f6ff;
+  border-left: 3px solid #407185;
+  border-radius: 4px;
+  font-weight: 500;
+  color: #2e404b;
+}
+
+.cancel_btn {
+  background-color: #c66;   /* 붉은 회색톤 */
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.cancel_btn:hover {
+  background-color: #a33;
+}

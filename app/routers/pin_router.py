@@ -1,12 +1,19 @@
-# app/routers/pin_router.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from typing import List
+from datetime import datetime, timezone, timedelta
+
 from app.core.database import SessionLocal
 from app.models.pin_model import Pin
-from app.schemas.pin_schema import PinResponse, PinCreate, PinUpdate
+from app.models.stock_model import Stock
+from app.schemas.pin_schema import PinResponse, PinCreate
+from app.models.log_model import Log
+from app.schemas.log_schema import LogCreate
+from app.crud import log_crud
 
 router = APIRouter(prefix="/pins", tags=["Pins"])
+
 
 def get_db():
     db = SessionLocal()
@@ -15,48 +22,73 @@ def get_db():
     finally:
         db.close()
 
-# READ-ALL 전체 핀 조회
+
 @router.get("/", response_model=List[PinResponse])
 def read_pins(db: Session = Depends(get_db)):
     return db.query(Pin).all()
 
-# READ 단일 핀 조회
-@router.get("/{pin_id}", response_model=PinResponse)
-def read_pin(pin_id: int, db: Session = Depends(get_db)):
-    pin = db.query(Pin).filter(Pin.id == pin_id).first()
-    if not pin:
-        raise HTTPException(status_code=404, detail="Pin not found")
-    return pin
 
-# CREATE 핀 생성
 @router.post("/", response_model=PinResponse)
 def create_pin(pin: PinCreate, db: Session = Depends(get_db)):
-    db_pin = Pin(**pin.dict())
-    db.add(db_pin)
+    new_pin = Pin(**pin.dict())
+    db.add(new_pin)
     db.commit()
-    db.refresh(db_pin)
-    return db_pin
+    db.refresh(new_pin)
 
-# UPDATE 핀 수정
-@router.put("/{pin_id}", response_model=PinResponse)
-def update_pin(pin_id: int, update_data: PinUpdate, db: Session = Depends(get_db)):
-    pin = db.query(Pin).filter(Pin.id == pin_id).first()
-    if not pin:
-        raise HTTPException(status_code=404, detail="Pin not found")
+    log_crud.create_log(
+        db,
+        LogCreate(
+            robot_name="-",
+            robot_ip=None,
+            pin_name=new_pin.name,
+            pin_coords=None,
+            category_name="-",
+            stock_name="-",
+            stock_id=None,
+            quantity=0,
+            action="핀 등록",
+            timestamp=datetime.now(timezone(timedelta(hours=9))),
+        ),
+    )
 
-    for key, value in update_data.dict(exclude_unset=True).items():
-        setattr(pin, key, value)
-    db.commit()
-    db.refresh(pin)
-    return pin
+    return new_pin
 
-# DELETE 핀 삭제
+
 @router.delete("/{pin_id}", response_model=PinResponse)
 def delete_pin(pin_id: int, db: Session = Depends(get_db)):
     pin = db.query(Pin).filter(Pin.id == pin_id).first()
     if not pin:
         raise HTTPException(status_code=404, detail="Pin not found")
 
+    linked = db.query(Stock).filter(Stock.pin_id == pin_id).count()
+    if linked > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"삭제 불가: '{pin.name}' 위치를 사용하는 상품이 {linked}개 존재합니다.",
+        )
+
+    log_crud.create_log(
+        db,
+        LogCreate(
+            robot_name="-",
+            robot_ip=None,
+            pin_name=pin.name,
+            pin_coords=None,
+            category_name="-",
+            stock_name="-",
+            stock_id=None,
+            quantity=0,
+            action="핀 삭제",
+            timestamp=datetime.now(timezone(timedelta(hours=9))),
+        ),
+    )
+
     db.delete(pin)
     db.commit()
+
+    remaining = db.execute(text("SELECT COUNT(*) FROM pin")).scalar()
+    if remaining == 0:
+        db.execute(text("ALTER TABLE pin AUTO_INCREMENT = 1"))
+        db.commit()
+
     return pin

@@ -84,7 +84,7 @@
           <!-- 작업 내역 -->
           <div class="log">
             <p class="log_t">작업 내역</p>
-            <div class="log_text_wrapper">
+            <div class="log_text_wrapper" id="log_text_wrapper">
               <p class="log_text">※ 작업 내역이 여기에 표시됩니다.</p>
             </div>
           </div>
@@ -110,6 +110,16 @@
               <p>※ 실시간 영상 표시 예정</p>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+    <!-- ✅ 변경 확인 팝업 -->
+    <div id="confirm_popup" class="confirm_popup" style="display:none;">
+      <div class="popup_box">
+        <p id="popup_message">정말 변경하시겠습니까?</p>
+        <div class="popup_buttons">
+          <button id="popup_yes" class="popup_btn yes">예</button>
+          <button id="popup_no" class="popup_btn no">아니오</button>
         </div>
       </div>
     </div>

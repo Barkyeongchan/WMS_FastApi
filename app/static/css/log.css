@@ -87,3 +87,30 @@ body {
   background-color: #c1c1c1;
   border-radius: 4px;
 }
+
+/* 기존 스타일 유지 + 텍스트 로그 스타일 */
+
+.log_text_list {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+  height: calc(100vh - 220px);
+  overflow-y: auto;
+  line-height: 1.6;
+  font-size: 14px;
+  color: #333;
+}
+
+.log_line {
+  padding: 6px 2px;
+  border-bottom: 1px dashed #e6e6e6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log_line:last-child {
+  border-bottom: none;
+}
