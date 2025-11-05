@@ -34,16 +34,25 @@ main {
   overflow: hidden;
 }
 
+/* ✅ 왼쪽 패널: 비율 1:1 적용 */
 .left_panel {
   display: flex;
   flex-direction: column;
   gap: 20px;
   flex: 0.4;
   min-width: 400px;
-  overflow-y: auto;
   height: 100%;
+  overflow: hidden;
 }
 
+.status_section,
+.control_panel {
+  flex: 1; /* 각각 1:1 비율 */
+  display: flex;
+  flex-direction: column;
+}
+
+/* 오른쪽 패널 */
 .right_panel {
   flex: 0.6;
   display: flex;
@@ -60,7 +69,7 @@ main {
   position: relative;
   padding-bottom: 6px;
   display: flex;
-  justify-content: space-between; /* ✅ 제목과 버튼 양 끝 배치 */
+  justify-content: space-between;
   align-items: center;
 }
 
@@ -83,6 +92,7 @@ main {
   flex: 1;
 }
 
+/* 이하 동일 */
 .robot_header {
   display: flex;
   justify-content: space-between;
@@ -134,7 +144,6 @@ main {
   border-radius: 10px;
   padding: 22px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  flex: 1;
   display: flex;
   flex-direction: column;
 }
@@ -211,11 +220,43 @@ main {
   position: relative;
 }
 
+.slider_labels span:nth-child(1) {
+  transform: translateX(-20px);
+}
+
 .slider_labels span:nth-child(3) {
   transform: translateX(20px);
 }
 
-.main_controls {
+/* ✅ 핀 선택 영역 */
+.pin_move_section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.pin_move_section label {
+  font-weight: 600;
+  color: #2f3542;
+}
+
+.pin_select {
+  padding: 8px 10px;
+  border: 1px solid #dcdde1;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: #2c3e50;
+}
+
+.pin_select:focus {
+  outline: none;
+  border-color: #4b7bec;
+}
+
+/* ✅ 버튼 묶음 */
+.move_buttons {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -233,9 +274,21 @@ main {
   transition: all 0.2s ease;
 }
 
-.control_btn.return { background-color: #1e8449; }
-.control_btn.stop { background-color: #c0392b; }
-.control_btn:hover { opacity: 0.9; }
+.control_btn.move_btn {
+  background-color: #4b7bec; /* 파란계열 */
+}
+
+.control_btn.return {
+  background-color: #1e8449; /* 초록 */
+}
+
+.control_btn.stop {
+  background-color: #c0392b; /* 빨강 */
+}
+
+.control_btn:hover {
+  opacity: 0.9;
+}
 
 .mode_switch {
   display: flex;
@@ -270,10 +323,22 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 10px;
+  box-sizing: border-box;
 }
 
-.direction_pad .row { display: flex; gap: 8px; }
+.direction_pad .row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
 
 .dir_btn {
   width: 55px; height: 55px;
@@ -356,8 +421,7 @@ main {
   background: #fff;
   border-radius: 10px;
   padding: 20px;
-  box-shadow: 0 4px 12px rgba(
-0,0,0,0.2);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
   animation: fadeIn 0.2s ease;
 }
 
@@ -444,4 +508,33 @@ main {
 .robot_select:focus {
   outline: none;
   border-color: #4b7bec;
+}
+
+/* ====== 추가 상태 스타일 ====== */
+
+/* 시스템 상태: 정상 / 오류 */
+.value.system_status {
+  font-weight: 600;
+  color: #27ae60; /* 녹색: 정상 */
+}
+.value.system_status.error {
+  color: #e74c3c; /* 빨강: 오류 */
+}
+
+/* 네트워크 상태 */
+.value.network_status {
+  font-weight: 600;
+  color: #2980b9; /* 파랑: 연결됨 */
+}
+.value.network_status.offline {
+  color: #c0392b; /* 끊김 */
+}
+
+/* 수행 시간 */
+.value.exec_time {
+  font-weight: 600;
+}
+
+.pin_control .move_pin_btn {
+  margin-top: 5px;
 }
