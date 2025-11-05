@@ -59,28 +59,38 @@
   background-color: #707070;
 }
 
-/* 드롭다운 */
+/* ---------------- 드롭다운 ---------------- */
 .dropdown {
   position: relative;
   display: inline-block;
-  z-index: 5;
+  z-index: 10;
 }
+
+/* ✅ 드롭다운 버튼 */
 .dropdown_cate,
 .dropdown_pin {
-  background-color: #f8f8f8;
+  background-color: #ffffff;
   cursor: pointer;
   border: 1px solid #ccc;
-  border-radius: 4px;
-  height: 35px;
+  border-radius: 6px;
+  height: 36px;
   padding: 0 40px 0 12px;
   font-size: 14px;
-  position: relative;
   color: #333;
-  line-height: 35px;
+  line-height: 36px;
   min-width: 170px;
   text-align: left;
   box-sizing: border-box;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
+.dropdown_cate:hover,
+.dropdown_pin:hover {
+  border-color: #407185;
+  box-shadow: 0 0 4px rgba(64, 113, 133, 0.3);
+}
+
+/* 화살표 표시 */
 .dropdown_cate::after,
 .dropdown_pin::after {
   content: "▼";
@@ -93,28 +103,75 @@
   pointer-events: none;
 }
 
+/* ✅ 드롭다운 메뉴 */
 .dropdown_menu {
   display: none;
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 5px);
   left: 0;
   background-color: #fff;
   border: 1px solid #ccc;
-  border-radius: 4px;
+  border-radius: 8px;                 /* 살짝 더 부드러운 곡선 */
   min-width: 100%;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  z-index: 1000;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  z-index: 999;
   overflow: hidden;
+  animation: dropdownFade 0.2s ease;
+  max-height: 260px;                  /* 항목 많을 때 스크롤 */
+  overflow-y: auto;
 }
+
+/* ✅ 드롭다운 메뉴 항목 — 텍스트 스타일 개선 */
 .dropdown_menu p {
   margin: 0;
-  padding: 8px 12px;
+  padding: 10px 14px;                 /* 위아래 여백으로 간격 확보 */
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13.5px;                  /* 입력 컴포넌트와 밸런스 */
+  color: #2f3b42;                     /* 덜 빡센 다크 그레이 */
   white-space: nowrap;
+  line-height: 1.4;
+  letter-spacing: -0.2px;             /* 가독성 보정 */
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+  user-select: none;                  /* 드래그 방지 */
+  background-color: #ffffff;
+}
+.dropdown_menu p + p {
+  border-top: 1px solid #f3f4f6;      /* 항목 사이 미세 구분선 */
 }
 .dropdown_menu p:hover {
-  background-color: #f0f0f0;
+  background-color: #e8f2f8;          /* 은은한 파랑 계열 하이라이트 */
+  color: #1a4d63;                     /* 텍스트도 살짝 진하게 */
+  font-weight: 600;                   /* hover 시만 더 굵게 */
+  transform: translateX(1px);         /* 반응감 */
+}
+/* 선택 고정(원하면 JS에서 .active 붙이면 유지됨) */
+.dropdown_menu p.active {
+  background-color: #dfeff6;
+  color: #1f566c;
+  font-weight: 600;
+}
+
+/* 드롭다운 메뉴 스크롤바 */
+.dropdown_menu::-webkit-scrollbar {
+  width: 8px;
+}
+.dropdown_menu::-webkit-scrollbar-thumb {
+  background: #c8d3d9;
+  border-radius: 4px;
+}
+.dropdown_menu::-webkit-scrollbar-thumb:hover {
+  background: #a9bcc6;
+}
+
+/* ✅ 드롭다운 표시 시 */
+.dropdown.active .dropdown_menu {
+  display: block;
+}
+
+/* 부드러운 등장 애니메이션 */
+@keyframes dropdownFade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ---------------- 상품 리스트 + 오른쪽 패널 ---------------- */
@@ -125,7 +182,7 @@
   height: 100%;
 }
 
-/* ✅ 상품 리스트 (로그 스타일 적용 버전) */
+/* ✅ 상품 리스트 */
 .product_list {
   flex: 4;
   background-color: white;
@@ -144,7 +201,7 @@
   border-bottom: 2px solid #ddd;
   padding-bottom: 8px;
   margin-bottom: 15px;
-  gap: 12px; /* ✅ 검색창 간격 확보 */
+  gap: 12px;
 }
 
 .list_title {
@@ -172,7 +229,7 @@
 }
 
 /* ============================
-   🔹 상품 리스트 (log.css 스타일 통합)
+   🔹 상품 리스트 (log.css 통합)
 ============================ */
 .stock_table_wrapper {
   flex: 1;
@@ -183,7 +240,6 @@
   flex-direction: column;
 }
 
-/* 테이블 기본 설정 */
 .stock_table {
   width: 100%;
   border-collapse: collapse;
@@ -192,7 +248,6 @@
   table-layout: fixed;
 }
 
-/* ✅ 헤더 색상: 진한 회색, 흰 글씨 */
 .stock_table thead {
   background-color: #f0f1f3;
   color: #333;
@@ -202,14 +257,12 @@
   z-index: 2;
 }
 
-/* ✅ tbody만 스크롤 가능 */
 .stock_table_wrapper tbody {
   display: block;
   overflow-y: auto;
-  height: 550px; /* 원하는 높이로 조정 가능 */
+  height: 550px;
 }
 
-/* 행 폭 균등 정렬 */
 .stock_table thead tr,
 .stock_table tbody tr {
   display: table;
@@ -217,38 +270,32 @@
   table-layout: fixed;
 }
 
-/* ✅ 셀 스타일 */
 .stock_table th,
 .stock_table td {
   padding: 12px;
   border-bottom: 1px solid #e0e0e0;
   text-align: center;
-  word-break: keep-all;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* ✅ 교차 색상 줄무늬 */
 .stock_table tbody tr:nth-child(odd) {
-  background-color: #ffffff;   /* 흰색 */
+  background-color: #ffffff;
 }
 .stock_table tbody tr:nth-child(even) {
-  background-color: #f7f7f7;   /* 연회색 */
+  background-color: #f7f7f7;
 }
 
-/* ✅ hover 효과 */
 .stock_table tbody tr:hover {
-  background-color: #eaf0ff;   /* log.css처럼 파란빛 강조 */
+  background-color: #eaf0ff;
 }
 
-/* 체크박스 스타일 */
 .stock_table input[type="checkbox"] {
   transform: scale(1.2);
   cursor: pointer;
 }
 
-/* ✅ 스크롤바 디자인 (log.css 스타일 강화) */
 .stock_table_wrapper tbody::-webkit-scrollbar {
   width: 8px;
 }
@@ -264,24 +311,13 @@
   background-color: #7a7a7a;
 }
 
-/* ✅ 전체 영역 부드러운 그림자 유지 */
-.product_list {
-  flex: 4;
-  background-color: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  display: flex;
-  flex-direction: column;
-}
-
+/* 검색창 */
 .search_bar {
   flex: 1;
   display: flex;
   justify-content: center;
   border: none;
 }
-
 .search_bar input {
   width: 240px;
   height: 32px;
@@ -368,7 +404,7 @@
   background-color: #707070;
 }
 
-/* 리스트 영역 스크롤 */
+/* 리스트 스크롤 */
 .category_list,
 .pin_list {
   list-style: none;
@@ -378,22 +414,55 @@
   overflow-y: auto;
   max-height: 200px;
 }
+
+/* ✅ 리스트 항목 수평 정렬 */
 .category_list li,
 .pin_list li {
-  padding: 4px 12px;
-  border-bottom: 1px solid #eee;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid #eee;
   font-size: 14px;
+  line-height: 1.5;
+  cursor: default;
 }
-.category_list li input,
-.pin_list li input {
+.category_list li input[type="checkbox"],
+.pin_list li input[type="checkbox"] {
   transform: scale(1.1);
   margin: 0;
-  cursor: pointer;
+  align-self: center;
+  vertical-align: middle;
+  position: relative;
+  top: 0;
 }
 .category_list li:hover,
 .pin_list li:hover {
-  background-color: #f9f9f9;
+  background-color: #f8f8f8;
+  transition: background 0.2s ease;
+}
+
+/* 스크롤바 */
+.category_list::-webkit-scrollbar,
+.pin_list::-webkit-scrollbar {
+  width: 8px;
+}
+.category_list::-webkit-scrollbar-track,
+.pin_list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+.category_list::-webkit-scrollbar-thumb,
+.pin_list::-webkit-scrollbar-thumb {
+  background-color: #b5b5b5;
+  border-radius: 4px;
+}
+.category_list::-webkit-scrollbar-thumb:hover,
+.pin_list::-webkit-scrollbar-thumb:hover {
+  background-color: #7a7a7a;
+}
+
+.dropdown_menu p.active {
+  background: none !important;
+  color: #333 !important;
+  font-weight: normal !important;
 }

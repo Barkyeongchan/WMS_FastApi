@@ -7,6 +7,36 @@
 
   <link rel="stylesheet" href="/static/css/style.css" />
   <link rel="stylesheet" href="/static/css/log.css" />
+  <style>
+    /* 로그 텍스트 리스트 스타일 */
+    .log_text_wrapper {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      padding: 20px;
+      margin-top: 20px;
+      max-height: 75vh;
+      overflow-y: auto;
+      font-family: "Pretendard", "Segoe UI", sans-serif;
+    }
+
+    .log_text_line {
+      font-size: 0.95rem;
+      color: #2c3e50;
+      border-bottom: 1px solid #eee;
+      padding: 8px 0;
+    }
+
+    .log_text_line:last-child {
+      border-bottom: none;
+    }
+
+    .log_text_line time {
+      color: #888;
+      font-size: 0.85rem;
+      margin-right: 8px;
+    }
+  </style>
 </head>
 
 <body>
@@ -23,26 +53,12 @@
       <div class="log_body">
         <div class="log_section">
           <p class="section_title">작업 로그</p>
-          <div class="log_table_wrapper">
-            <table class="log_table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>로봇 이름</th>
-                  <th>로봇 IP</th>
-                  <th>핀 이름</th>
-                  <th>좌표</th>
-                  <th>카테고리</th>
-                  <th>제품 이름</th>
-                  <th>제품 ID</th>
-                  <th>수량</th>
-                  <th>작업</th>
-                  <th>발생 시각</th>
-                </tr>
-              </thead>
-              <tbody id="log_table_body"></tbody>
-            </table>
+
+          <!-- 텍스트 로그 리스트 -->
+          <div class="log_text_wrapper" id="log_text_list">
+            <p>📜 로그 데이터를 불러오는 중입니다...</p>
           </div>
+
         </div>
       </div>
     </div>

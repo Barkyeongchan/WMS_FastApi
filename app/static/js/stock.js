@@ -1,41 +1,53 @@
-// app/static/js/stock.js
 document.addEventListener("DOMContentLoaded", () => {
+  console.log("✅ stock.js loaded");
 
-  /* ✅ 공통 드롭다운 로직 (기존 유지) */
-  const dropdowns = document.querySelectorAll(".dropdown");
-  dropdowns.forEach(dropdown => {
-    const button = dropdown.querySelector(".dropdown_cate, .dropdown_pin");
-    const menu = dropdown.querySelector(".dropdown_menu");
-
-    button.addEventListener("click", e => {
-      e.stopPropagation();
-      document.querySelectorAll(".dropdown_menu").forEach(other => {
-        if (other !== menu) other.style.display = "none";
-      });
-      menu.style.display = menu.style.display === "block" ? "none" : "block";
-    });
-  });
-
-  document.addEventListener("click", () => {
-    document.querySelectorAll(".dropdown_menu").forEach(menu => {
-      menu.style.display = "none";
-    });
-  });
-
-  /* =======================
-     ✅ 상품 테이블 (리스트/검색/정렬/체크삭제)
-     ======================= */
+  // ---------- 공통 참조 ----------
   const tbody = document.querySelector(".stock_table.body tbody");
+  if (!tbody) return console.warn("❌ tbody not found on this page.");
+
+  const addBox = document.querySelector(".product_add");
+  const nameInput = addBox?.querySelector("input[type='text']");
+  const qtyInput = addBox?.querySelector("input[type='number']");
+  const cateBtn = addBox?.querySelector("button.dropdown_cate");
+  const cateMenu = cateBtn?.nextElementSibling;
+  const pinBtn = addBox?.querySelector("button.dropdown_pin");
+  const pinMenu = pinBtn?.nextElementSibling;
+  const addBtn = addBox?.querySelector(".add_btn");
+
+  const catePanel = document.querySelector(".category_panel");
+  const pinPanel = document.querySelector(".pin_panel");
+  const cateInput = catePanel?.querySelector("input[type='text']");
+  const cateAdd = catePanel?.querySelector(".add_btn");
+  const cateDel = catePanel?.querySelector(".delete_btn");
+  const cateList = catePanel?.querySelector(".category_list");
+  const pinInput = pinPanel?.querySelector("input[type='text']");
+  const pinAdd = pinPanel?.querySelector(".add_btn");
+  const pinDel = pinPanel?.querySelector(".delete_btn");
+  const pinList = pinPanel?.querySelector(".pin_list");
+
+  const listButtons = document.querySelector(".list_buttons");
+
   let products = [];
 
-  // 테이블 렌더링 — 서버 응답 필드명에 맞춤
-  const renderTable = (data) => {
+  // ---------- 상품 테이블 ----------
+  async function loadProducts() {
+    try {
+      const res = await fetch("/stocks/");
+      if (!res.ok) throw new Error("상품 목록 불러오기 실패");
+      products = await res.json();
+      renderTable(products);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function renderTable(data) {
     tbody.innerHTML = "";
-    data.forEach(item => {
+    data.forEach((item) => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td><input type="checkbox" data-id="${item.id}" /></td>
-        <td>${item.id}</td>                 <!-- ✅ ID 추가 -->
+        <td>${item.id}</td>
         <td>${item.name}</td>
         <td>${item.category_name}</td>
         <td>${item.quantity}</td>
@@ -43,280 +55,316 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
       tbody.appendChild(tr);
     });
-  };
+  }
 
-
-  // 검색 — name, category_name 기준
+  // ---------- 검색 ----------
   const searchInput = document.getElementById("searchInput");
   if (searchInput) {
     searchInput.addEventListener("input", (e) => {
-      const keyword = e.target.value.toLowerCase();
-      const filtered = products.filter(p =>
-        (p.name || "").toLowerCase().includes(keyword) ||
-        (p.category_name || "").toLowerCase().includes(keyword)
+      const kw = e.target.value.toLowerCase();
+      const filtered = products.filter(
+        (p) =>
+          (p.name || "").toLowerCase().includes(kw) ||
+          (p.category_name || "").toLowerCase().includes(kw)
       );
       renderTable(filtered);
     });
   }
 
-  // ✅ 정렬 — thead 의 data-sort 값: stock_id, name, category, qty, location
-  let sortStates = {
-    stock_id: "asc",
-    name: "asc",
-    category_name: "asc",
-    quantity: "asc",
-    pin_name: "asc"
-  };
-  
-  document.querySelectorAll(".stock_table thead th[data-sort]").forEach(th => {
-    const rawKey = th.dataset.sort; // stock_id | name | category | qty | location
-  
-    // 화면 헤더 키 → 실제 데이터 키 매핑
-    const keyMap = {
-      stock_id: "id",
-      name: "name",
-      category: "category_name",
-      qty: "quantity",
-      location: "pin_name"
-    };
-    const key = keyMap[rawKey] || rawKey;
-  
-    // 초기 화살표
-    th.textContent += " ▲";
-  
-    th.addEventListener("click", () => {
-      const isAsc = (sortStates[key] || "asc") === "asc";
-      sortStates[key] = isAsc ? "desc" : "asc";
-    
-      // 정렬 로직
-      products.sort((a, b) => {
-        const av = a[key], bv = b[key];
-        if (typeof av === "number" && typeof bv === "number") {
-          return isAsc ? bv - av : av - bv;   // 숫자 기준
-        }
-        const as = (av ?? "").toString();
-        const bs = (bv ?? "").toString();
-        return isAsc ? bs.localeCompare(as) : as.localeCompare(bs); // 문자열 기준
+  // ---------- 카테고리 ----------
+  async function loadCategories() {
+    try {
+      const res = await fetch("/categories/");
+      if (!res.ok) throw new Error("카테고리 로드 실패");
+      const data = await res.json();
+
+      if (cateList) {
+        cateList.innerHTML = data
+          .map(
+            (c) =>
+              `<li><label><input type="checkbox" data-id="${c.id}" /> ${c.name}</label></li>`
+          )
+          .join("");
+      }
+      if (cateMenu) {
+        cateMenu.innerHTML = data
+          .map((c) => `<p data-id="${c.id}">${c.name}</p>`)
+          .join("");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  if (cateAdd && cateInput) {
+    cateAdd.addEventListener("click", async () => {
+      const name = cateInput.value.trim();
+      if (!name) return alert("카테고리명을 입력하세요.");
+      const res = await fetch("/categories/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
       });
-    
-      // 헤더 화살표 업데이트
-      document.querySelectorAll(".stock_table thead th[data-sort]").forEach(h => {
-        const hk = keyMap[h.dataset.sort] || h.dataset.sort;
-        h.textContent = h.textContent.replace(/ ▲| ▼/g, "");
-        h.textContent += (sortStates[hk] || "asc") === "asc" ? " ▲" : " ▼";
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return alert(err.detail || "카테고리 추가 실패");
+      }
+      cateInput.value = "";
+      loadCategories();
+    });
+  }
+
+  if (cateDel) {
+    cateDel.addEventListener("click", async () => {
+      const checked = cateList?.querySelectorAll("input:checked") || [];
+      if (!checked.length) return alert("삭제할 카테고리를 선택하세요.");
+      for (const cb of checked) {
+        const id = cb.dataset.id;
+        await fetch(`/categories/${id}`, { method: "DELETE" });
+      }
+      loadCategories();
+      loadProducts();
+    });
+  }
+
+  // ---------- 핀 ----------
+  async function loadPins() {
+    try {
+      const res = await fetch("/pins/");
+      if (!res.ok) throw new Error("핀 로드 실패");
+      const data = await res.json();
+
+      if (pinList) {
+        pinList.innerHTML = data
+          .map(
+            (p) =>
+              `<li><label><input type="checkbox" data-id="${p.id}" /> ${p.name}</label></li>`
+          )
+          .join("");
+      }
+      if (pinMenu) {
+        pinMenu.innerHTML = data
+          .map((p) => `<p data-id="${p.id}">${p.name}</p>`)
+          .join("");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  if (pinAdd && pinInput) {
+    pinAdd.addEventListener("click", async () => {
+      const name = pinInput.value.trim();
+      if (!name) return alert("위치명을 입력하세요.");
+      const res = await fetch("/pins/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
       });
-    
-      renderTable(products);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return alert(err.detail || "위치 추가 실패");
+      }
+      pinInput.value = "";
+      loadPins();
+    });
+  }
+
+  if (pinDel) {
+    pinDel.addEventListener("click", async () => {
+      const checked = pinList?.querySelectorAll("input:checked") || [];
+      if (!checked.length) return alert("삭제할 위치를 선택하세요.");
+      for (const cb of checked) {
+        const id = cb.dataset.id;
+        await fetch(`/pins/${id}`, { method: "DELETE" });
+      }
+      loadPins();
+      loadProducts();
+    });
+  }
+
+  // ---------- 드롭다운 ----------
+  document.querySelectorAll(".product_add .dropdown").forEach((dropdown) => {
+    const button = dropdown.querySelector(".dropdown_cate, .dropdown_pin");
+    const menu = dropdown.querySelector(".dropdown_menu");
+    if (!button || !menu) return;
+
+    button.addEventListener("click", (e) => {
+      e.stopPropagation();
+      document
+        .querySelectorAll(".product_add .dropdown .dropdown_menu")
+        .forEach((m) => {
+          if (m !== menu) m.style.display = "none";
+        });
+      const isOpen = menu.style.display === "block";
+      menu.style.display = isOpen ? "none" : "block";
+    });
+
+    menu.addEventListener("click", (e) => {
+      const item = e.target.closest("p");
+      if (!item) return;
+      button.textContent = item.textContent;
+      button.dataset.id = item.dataset.id;
+      menu.style.display = "none";
     });
   });
 
-
-  /* =======================
-     ✅ 카테고리 관리 (기존 동작 유지)
-     ======================= */
-  const cateInput = document.querySelector(".category_panel input");
-  const cateAddBtn = document.querySelector(".category_panel .add_btn");
-  const cateDelBtn = document.querySelector(".category_panel .delete_btn");
-  const cateList   = document.querySelector(".category_list");
-
-  const cateDropdownBtn   = document.querySelector(".product_add .dropdown_cate");
-  const cateDropdownMenu  = document.querySelector(".product_add .dropdown_cate + .dropdown_menu");
-  const CATEGORY_API = "/categories";
-
-  function renderCategory(items) {
-    // 오른쪽 패널 리스트
-    if (cateList) {
-      cateList.innerHTML = items.map(c =>
-        `<li><input type="checkbox" data-id="${c.id}" /><span>${c.name}</span></li>`
-      ).join("");
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".product_add .dropdown")) {
+      document
+        .querySelectorAll(".product_add .dropdown .dropdown_menu")
+        .forEach((m) => (m.style.display = "none"));
     }
+  });
 
-    // 상품 등록 드롭다운
-    if (cateDropdownMenu) {
-      cateDropdownMenu.innerHTML = items.map(c =>
-        `<p data-id="${c.id}">${c.name}</p>`
-      ).join("");
-
-      cateDropdownMenu.querySelectorAll("p").forEach(p => {
-        p.addEventListener("click", () => {
-          cateDropdownBtn.textContent = p.textContent;
-          cateDropdownBtn.dataset.id = p.dataset.id;  // 등록 시 사용할 FK
-          cateDropdownMenu.style.display = "none";
-        });
-      });
-    }
-  }
-
-  async function loadCategories() {
-    const res = await fetch(CATEGORY_API);
-    if (!res.ok) return;
-    const data = await res.json();
-    renderCategory(data);
-  }
-
-  if (cateAddBtn) {
-    cateAddBtn.addEventListener("click", async () => {
-      const name = (cateInput?.value || "").trim();
-      if (!name) return alert("카테고리명 입력");
-
-      await fetch(CATEGORY_API, {
+  // ---------- 상품 등록 ----------
+  if (addBtn && nameInput && qtyInput && cateBtn && pinBtn) {
+    addBtn.addEventListener("click", async () => {
+      const name = nameInput.value.trim();
+      const qty = Number(qtyInput.value);
+      const category_id = Number(cateBtn.dataset.id || 0);
+      const pin_id = Number(pinBtn.dataset.id || 0);
+      if (!name || !qty || !category_id || !pin_id)
+        return alert("모두 입력/선택하세요.");
+      await fetch("/stocks/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name })
+        body: JSON.stringify({ name, quantity: qty, category_id, pin_id }),
       });
-
-      if (cateInput) cateInput.value = "";
-      loadCategories();
-    });
-  }
-
-  if (cateDelBtn) {
-    cateDelBtn.addEventListener("click", async () => {
-      const checked = cateList?.querySelectorAll("input:checked") || [];
-      if (!checked.length) return alert("삭제할 항목 선택");
-
-      for (const c of checked) {
-        await fetch(`${CATEGORY_API}/${c.dataset.id}`, { method: "DELETE" });
-      }
-      loadCategories();
-    });
-  }
-
-  loadCategories();
-
-  /* =======================
-     ✅ 위치 관리 (기존 동작 유지)
-     ======================= */
-  const pinInput = document.querySelector(".pin_panel input");
-  const pinAddBtn = document.querySelector(".pin_panel .add_btn");
-  const pinDelBtn = document.querySelector(".pin_panel .delete_btn");
-  const pinListEl = document.querySelector(".pin_list");
-
-  const pinDropdownBtn  = document.querySelector(".product_add .dropdown_pin");
-  const pinDropdownMenu = document.querySelector(".product_add .dropdown_pin + .dropdown_menu");
-  const PIN_API = "/pins";
-
-  function renderPins(items) {
-    // 오른쪽 패널 리스트
-    if (pinListEl) {
-      pinListEl.innerHTML = items.map(p =>
-        `<li><input type="checkbox" data-id="${p.id}" /><span>${p.name}</span></li>`
-      ).join("");
-    }
-
-    // 상품 등록 드롭다운
-    if (pinDropdownMenu) {
-      pinDropdownMenu.innerHTML = items.map(p =>
-        `<p data-id="${p.id}">${p.name}</p>`
-      ).join("");
-
-      pinDropdownMenu.querySelectorAll("p").forEach(p => {
-        p.addEventListener("click", () => {
-          pinDropdownBtn.textContent = p.textContent;
-          pinDropdownBtn.dataset.id = p.dataset.id;  // 등록 시 사용할 FK
-          pinDropdownMenu.style.display = "none";
-        });
-      });
-    }
-  }
-
-  async function loadPins() {
-    const res = await fetch(PIN_API);
-    if (!res.ok) return;
-    const data = await res.json();
-    renderPins(data);
-  }
-
-  if (pinAddBtn) {
-    pinAddBtn.addEventListener("click", async () => {
-      const name = (pinInput?.value || "").trim();
-      if (!name) return alert("위치명 입력");
-
-      await fetch(PIN_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name })
-      });
-
-      if (pinInput) pinInput.value = "";
-      loadPins();
-    });
-  }
-
-  if (pinDelBtn) {
-    pinDelBtn.addEventListener("click", async () => {
-      const checked = pinListEl?.querySelectorAll("input:checked") || [];
-      if (!checked.length) return alert("삭제할 위치 선택");
-
-      for (const p of checked) {
-        await fetch(`${PIN_API}/${p.dataset.id}`, { method: "DELETE" });
-      }
-      loadPins();
-    });
-  }
-
-  loadPins();
-
-  /* =======================
-     ✅ 상품 등록 / 리스트 로딩 / 체크삭제
-     ======================= */
-  const productNameInput = document.querySelector(".product_add input[type='text']");
-  const productQtyInput  = document.querySelector(".product_add input[type='number']");
-  const productAddBtn    = document.querySelector(".product_add .add_btn");
-  const stockDeleteBtn   = document.querySelector(".product_list .delete_btn");
-
-  // 리스트 로딩
-  async function loadProducts() {
-    const res = await fetch("/stocks");
-    if (!res.ok) return;
-    const data = await res.json();
-    // 서버 응답 그대로 저장 (id, name, quantity, category_name, pin_name)
-    products = data;
-    renderTable(products);
-  }
-
-  // 등록
-  if (productAddBtn) {
-    productAddBtn.addEventListener("click", async () => {
-      const name = (productNameInput?.value || "").trim();
-      const quantity = Number(productQtyInput?.value || 0);
-      const category_id = cateDropdownBtn?.dataset.id;
-      const pin_id = pinDropdownBtn?.dataset.id;
-
-      if (!name) return alert("상품명 입력");
-      if (!category_id) return alert("카테고리 선택");
-      if (!pin_id) return alert("위치 선택");
-      if (!quantity || quantity < 1) return alert("수량 입력");
-
-      await fetch("/stocks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, quantity, category_id, pin_id })
-      });
-
-      if (productNameInput) productNameInput.value = "";
-      if (productQtyInput) productQtyInput.value = "";
-      if (cateDropdownBtn) { cateDropdownBtn.textContent = "카테고리"; delete cateDropdownBtn.dataset.id; }
-      if (pinDropdownBtn)  { pinDropdownBtn.textContent  = "위치";     delete pinDropdownBtn.dataset.id; }
-
+      nameInput.value = "";
+      qtyInput.value = "";
+      cateBtn.textContent = "카테고리";
+      pinBtn.textContent = "위치";
+      delete cateBtn.dataset.id;
+      delete pinBtn.dataset.id;
       loadProducts();
     });
   }
 
-  // 체크삭제
-  if (stockDeleteBtn) {
-    stockDeleteBtn.addEventListener("click", async () => {
-      const checked = tbody.querySelectorAll("input[type='checkbox']:checked");
-      if (!checked.length) return alert("삭제할 상품 선택");
+  // ---------- 이벤트 위임: 수정·삭제 ----------
+  listButtons?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+
+    // 기본 삭제
+    if (btn.classList.contains("delete_btn")) {
+      const checked = tbody.querySelectorAll("input:checked");
+      if (!checked.length) return alert("삭제할 상품을 선택하세요.");
+      for (const cb of checked) {
+        await fetch(`/stocks/${cb.dataset.id}`, { method: "DELETE" });
+      }
+      return loadProducts();
+    }
+
+    // 수정 모드 진입
+    if (btn.classList.contains("edit_btn")) {
+      const checked = tbody.querySelectorAll("input:checked");
+      if (!checked.length) return alert("수정할 상품을 선택하세요.");
+
+      const [categories, pins] = await Promise.all([
+        fetch("/categories/").then((r) => r.json()),
+        fetch("/pins/").then((r) => r.json()),
+      ]);
 
       for (const cb of checked) {
+        const tr = cb.closest("tr");
         const id = cb.dataset.id;
-        await fetch(`/stocks/${id}`, { method: "DELETE" });
+        const product = products.find((p) => p.id == id);
+        if (!product) continue;
+        tr.innerHTML = `
+          <td><input type="checkbox" data-id="${id}" checked /></td>
+          <td>${id}</td>
+          <td><input type="text" class="edit_name" value="${product.name}"/></td>
+          <td>
+            <select class="edit_category">
+              ${categories
+                .map(
+                  (c) =>
+                    `<option value="${c.id}" ${
+                      c.name === product.category_name ? "selected" : ""
+                    }>${c.name}</option>`
+                )
+                .join("")}
+            </select>
+          </td>
+          <td><input type="number" class="edit_qty" value="${
+            product.quantity
+          }" min="0"/></td>
+          <td>
+            <select class="edit_pin">
+              ${pins
+                .map(
+                  (p) =>
+                    `<option value="${p.id}" ${
+                      p.name === product.pin_name ? "selected" : ""
+                    }>${p.name}</option>`
+                )
+                .join("")}
+            </select>
+          </td>
+        `;
       }
-      loadProducts();
-    });
-  }
 
-  // 최초 로딩
+      listButtons.innerHTML = `
+        <button class="add_btn confirm_edit_btn">변경 완료</button>
+        <button class="delete_btn now_delete_btn">삭제</button>
+        <button class="cancel_btn">취소</button>
+      `;
+      return;
+    }
+
+    // 수정 완료
+    if (btn.classList.contains("confirm_edit_btn")) {
+      const edited = tbody.querySelectorAll("input:checked");
+      for (const cb of edited) {
+        const tr = cb.closest("tr");
+        const id = cb.dataset.id;
+        const name = tr.querySelector(".edit_name").value.trim();
+        const quantity = Number(tr.querySelector(".edit_qty").value);
+        const category_id = Number(tr.querySelector(".edit_category").value);
+        const pin_id = Number(tr.querySelector(".edit_pin").value);
+        await fetch(`/stocks/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, quantity, category_id, pin_id }),
+        });
+      }
+      alert("✅ 수정 완료");
+      await loadProducts();
+      listButtons.innerHTML = `
+        <button class="edit_btn">수정</button>
+        <button class="delete_btn">삭제</button>
+      `;
+      return;
+    }
+
+    // 수정 중 삭제
+    if (btn.classList.contains("now_delete_btn")) {
+      const checked = tbody.querySelectorAll("input:checked");
+      if (!checked.length) return alert("삭제할 상품을 선택하세요.");
+      for (const cb of checked) {
+        await fetch(`/stocks/${cb.dataset.id}`, { method: "DELETE" });
+      }
+      await loadProducts();
+      listButtons.innerHTML = `
+        <button class="edit_btn">수정</button>
+        <button class="delete_btn">삭제</button>
+      `;
+      return;
+    }
+
+    // 취소
+    if (btn.classList.contains("cancel_btn")) {
+      await loadProducts();
+      listButtons.innerHTML = `
+        <button class="edit_btn">수정</button>
+        <button class="delete_btn">삭제</button>
+      `;
+    }
+  });
+
+  // ---------- 초기 로드 ----------
   loadProducts();
+  loadCategories();
+  loadPins();
 });
