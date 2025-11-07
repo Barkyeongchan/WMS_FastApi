@@ -20,21 +20,20 @@
 
     <!-- 메인화면 -->
     <div id="main_screen" class="main_screen">
+      <div class="dashboard_layout">
 
-      <!-- 메인 내용 전체 -->
-      <div class="main_body">
-        <!-- 첫 번째 라인 -->
-        <div class="first_line">
+        <!-- 왼쪽 영역 -->
+        <div class="left_section">
+
+          <!-- 상품 입출고 -->
           <div class="order">
-            <!-- 검색 -->
             <div class="search_bar">
-              <input class="search_input" id="search_input" placeholder="   상품명을 입력하세요" type="text" />
+              <input class="search_input" id="search_input" placeholder="상품명을 입력하세요" type="text" />
               <button class="search_btn" id="search_btn">검색</button>
             </div>
 
-            <!-- 좌우 분할 -->
             <div class="order_body">
-              <!-- 좌: 검색 결과 -->
+              <!-- 왼쪽: 상품 리스트 -->
               <div class="order_left">
                 <table class="product_table">
                   <thead>
@@ -44,14 +43,12 @@
                       <th>수량</th>
                     </tr>
                   </thead>
-                  <tbody id="result_body">
-                    <!-- JS 결과 삽입 -->
-                  </tbody>
+                  <tbody id="result_body"></tbody>
                 </table>
                 <p class="empty_hint" id="empty_hint">검색 결과가 없습니다.</p>
               </div>
 
-              <!-- 우: 조정 패널 -->
+              <!-- 오른쪽: 상세 작업 패널 -->
               <div class="order_right">
                 <div class="info_box">
                   <p class="info_title">선택된 상품</p>
@@ -63,68 +60,90 @@
                   <input id="delta_qty" type="number" value="1" min="1" class="delta_input" />
                 </div>
 
+                <div class="info_box">
+                  <p class="info_title">작업 로봇</p>
+                  <select id="robot_select" class="robot_select">
+                    <option value="">로봇 목록</option>
+                  </select>
+                </div>
+
                 <div class="buttons">
                   <button class="input_btn" id="btn_in">입고</button>
                   <button class="output_btn" id="btn_out">출고</button>
                 </div>
-              </div>
-            </div>
-          </div>
 
-          <div class="map">
-            <p>지도</p>
-            <div class="map_content">
-              <p>※ 매핑된 지도 표시 예정</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- 두 번째 라인 (2:1:2 비율) -->
-        <div class="second_line">
-          <!-- 작업 내역 -->
-          <div class="log">
-            <p class="log_t">작업 내역</p>
-            <div class="log_text_wrapper" id="log_text_wrapper">
-              <p class="log_text">※ 작업 내역이 여기에 표시됩니다.</p>
-            </div>
-          </div>
-
-          <!-- 로봇 상태 -->
-          <div class="robot_status">
-            <p>로봇 상태</p>
-            <div class="robot_list">
-              <div class="robot_card">
-                <p class="robot_name"></p>
-                <div class="battery_bar">
-                  <div class="battery_fill" style="width: 80%;"></div>
+                <!-- ✅ 명령 대기 로그 -->
+                <div class="command_log">
+                  <p class="queue_title">명령 대기 로그</p>
+                  <div class="log_area" id="log_area">
+                    <p class="log_hint">※ 명령이 여기에 표시됩니다.</p>
+                  </div>
                 </div>
-                <p class="battery_label"></p>
+
+                <!-- ✅ 시작 버튼 (하단 고정) -->
+                <div class="start_btn_container">
+                  <button id="btn_start" class="start_btn">시작</button>
+                </div>
+
               </div>
             </div>
           </div>
 
-          <!-- 카메라 -->
-          <div class="camera">
-            <p>카메라 캡쳐</p>
-            <div class="camera_content">
-              <p>※ 실시간 영상 표시 예정</p>
+          <!-- ✅ 작업 내역 + 요약 현황 -->
+          <div class="log_summary_container">
+            <div class="log">
+              <p class="log_t">작업 내역</p>
+              <div class="log_text_wrapper" id="log_text_wrapper">
+                <p class="log_text">※ 작업 내역이 여기에 표시됩니다.</p>
+              </div>
+            </div>
+
+            <div class="summary">
+              <p class="log_t">요약 현황</p>
+              <div class="summary_item"><span>오늘 입고</span><div class="summary_desc">건</div></div>
+              <div class="summary_item"><span>오늘 출고</span><div class="summary_desc">건</div></div>
+              <div class="summary_item"><span>신규 등록</span><div class="summary_desc">건</div></div>
+              <div class="summary_item"><span>가동 로봇</span><div class="summary_desc">로봇 수</div></div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-    <!-- ✅ 변경 확인 팝업 -->
-    <div id="confirm_popup" class="confirm_popup" style="display:none;">
-      <div class="popup_box">
-        <p id="popup_message">정말 변경하시겠습니까?</p>
-        <div class="popup_buttons">
-          <button id="popup_yes" class="popup_btn yes">예</button>
-          <button id="popup_no" class="popup_btn no">아니오</button>
+
+        <!-- 오른쪽 통합 카드 -->
+        <div class="right_panel">
+          <div class="right_panel_header">
+            <p>지도 및 로봇 상태</p>
+            <select id="robot_status_select" class="robot_status_select">
+              <option value="">로봇 선택</option>
+            </select>
+          </div>
+        
+          <div class="map_content">
+            <p>※ 매핑된 지도 표시 예정</p>
+          </div>
+        
+          <div class="robot_camera_section">
+            <div class="robot_status">
+              <div class="robot_list">
+                <div class="robot_card">
+                  <div class="battery_bar"><div class="battery_fill"></div></div>
+                  <p class="robot_mode">자동</p>
+                  <p class="robot_speed">0km/s</p>
+                  <p class="robot_status_text">A1</p>
+                </div>
+              </div>
+            </div>
+          
+            <div class="camera">
+              <div class="camera_content">
+                <p>※ 실시간 영상 표시 예정</p>
+              </div>
+            </div>
+          </div>
         </div>
+        
       </div>
     </div>
   </main>
-
   <script src="/static/js/main.js"></script>
 </body>
 </html>

@@ -6,11 +6,12 @@ body {
   padding: 0;
   background-color: #ededed;
   font-family: Arial, sans-serif;
+  height: 100vh;
+  overflow: hidden;
 }
 
 main {
   display: flex;
-  flex-direction: row;
   height: 100vh;
   overflow: hidden;
 }
@@ -20,13 +21,9 @@ main {
 ======================= */
 .sidebar {
   width: 150px;
-  height: 100vh;
   background-color: #435d6d;
   color: white;
-  transition: transform 0.3s ease;
-  z-index: 10;
 }
-.sidebar.closed { transform: translateX(-100%); }
 .sidebar p.WASD {
   font-size: 2em;
   font-weight: bold;
@@ -41,6 +38,22 @@ main {
   text-decoration: none;
   text-align: center;
 }
+.sidebar a.active {
+  background-color: #f3f4f6;
+  color: #2e404b;
+  font-weight: 700;
+}
+.sidebar a.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  background-color: #293942;
+  border-radius: 4px;
+}
+.sidebar a { position: relative; }
 
 /* =======================
    메인 스크린
@@ -49,60 +62,57 @@ main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  transition: margin-left 0.3s ease;
-  margin-left: 0;
   height: 100vh;
   overflow: hidden;
 }
-.main_screen.expanded { margin-left: -200px; }
 
 /* =======================
-   메인 바디 (3:2 고정)
+   대시보드 전체 레이아웃
 ======================= */
-.main_body {
-  flex: 1;
-  display: grid;                 /* ✅ 행 비율을 그리드로 고정 */
-  grid-template-rows: 3fr 2fr;   /* ✅ 첫줄:둘째줄 = 3:2 */
+.dashboard_layout {
+  display: grid;
+  grid-template-columns: 2fr 3fr;
   gap: 20px;
   padding: 20px;
-  background-color: #f3f4f6;
+  height: 100vh;
   box-sizing: border-box;
   overflow: hidden;
-  min-height: 0;                 /* 스크롤 안정 */
 }
 
 /* =======================
-   첫 번째 라인
+   왼쪽 영역 (2:1 비율)
 ======================= */
-.first_line {
-  display: flex;
+.left_section {
+  display: grid;
+  grid-template-rows: 2fr 1fr;
   gap: 20px;
+  height: 100%;
   overflow: hidden;
-  min-height: 0;                 /* ✅ 그리드 row 안에서 스크롤 안정 */
 }
 
-/* =======================
-   ORDER
-======================= */
-.order {
+/* 공통 카드 스타일 */
+.order,
+.log,
+.summary,
+.right_panel {
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  box-sizing: border-box;
   overflow: hidden;
-  flex: 1;
-  min-height: 0;                 /* ✅ 내부 스크롤 안정 */
+  height: 100%;
 }
 
+/* =======================
+   주문 카드 (입출고)
+======================= */
 .search_bar {
   display: flex;
   align-items: center;
   width: 100%;
-  max-width: 480px;
-  margin: 0 auto;
   border-bottom: 1px solid #ccc;
 }
 .search_input {
@@ -129,59 +139,54 @@ main {
   grid-template-columns: 1.2fr 0.8fr;
   gap: 16px;
   flex: 1;
-  min-height: 0;
   margin-top: 10px;
+  overflow: hidden;
+  min-height: 0;
 }
-
 .order_left {
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   background: #fafafa;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   min-height: 0;
 }
 .product_table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+  table-layout: fixed;
 }
-.product_table thead th {
-  background: #f0f0f0;
-  padding: 8px;
-  text-align: center;
-  border-bottom: 1px solid #ddd;
+.product_table thead {
   position: sticky;
   top: 0;
+  z-index: 1;
+  background: #f0f0f0;
+  border-bottom: 1px solid #ddd;
 }
+.product_table thead tr,
+.product_table tbody tr {
+  display: grid;
+  grid-template-columns: 1fr 0.35fr 0.25fr;
+}
+.product_table th,
 .product_table td {
   padding: 8px;
-  border-bottom: 1px solid #eee;
   text-align: center;
+  border-bottom: 1px solid #eee;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .product_table tbody {
   display: block;
   overflow-y: auto;
-  /* ✅ 가용 높이를 꽉 채우고 내부 스크롤만 */
   height: 100%;
   min-height: 0;
 }
-.product_table thead,
-.product_table tbody tr {
-  display: table;
-  width: 100%;
-  table-layout: fixed;
-}
 .product_table tbody tr:hover { background: #f5faff; }
 .product_table tr.selected { background: #eaf5ff; }
-.empty_hint {
-  text-align: center;
-  color: #888;
-  padding: 10px 0;
-  font-size: 0.9rem;
-  display: none;
-}
 
 .order_right {
   border: 1px solid #e0e0e0;
@@ -190,17 +195,17 @@ main {
   padding: 16px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   gap: 16px;
-  overflow: hidden;
   min-height: 0;
+  overflow: auto;
 }
 .info_box {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 0;
   border-bottom: 1px solid #f0f0f0;
+  padding: 6px 0;
+  height: 20px;
 }
 .info_title { font-weight: 600; color: #555; }
 .info_value { font-weight: 700; color: #34495e; }
@@ -213,11 +218,24 @@ main {
   font-size: 0.9rem;
 }
 
+/* ✅ 로봇 선택 드롭다운 */
+.robot_select {
+  width: 120px;
+  text-align: center;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+  background: #fff;
+  color: #34495e;
+  cursor: pointer;
+}
+
 .buttons {
   display: flex;
   justify-content: center;
   gap: 10px;
-  margin-top: auto;
+  margin-top: 6px;
 }
 .input_btn, .output_btn {
   border: none;
@@ -228,28 +246,63 @@ main {
   color: #fff;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.05s ease, opacity 0.15s ease;
 }
 .input_btn { background-color: #2ecc71; }
 .output_btn { background-color: #e74c3c; }
 .input_btn:hover, .output_btn:hover { opacity: 0.9; }
-.input_btn:active, .output_btn:active { transform: scale(0.97); }
 
 /* =======================
-   MAP
+   작업 내역 + 요약 현황
 ======================= */
-.map {
+.log_summary_container {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  height: 100%;
+}
+
+.log_text_wrapper {
   flex: 1;
-  background-color: white;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  padding: 20px;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  background: #fafafa;
+  padding: 10px;
+  font-size: 14px;
+  color: #555;
+  overflow-y: auto;
+}
+
+.summary_item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: #34495e;
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+}
+.summary_desc {
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 10px;
+  margin-left: 4px;
+}
+.summary_value {
+  color: #407185;
+  font-weight: 700;
+}
+
+/* =======================
+   오른쪽 통합 카드
+======================= */
+.right_panel {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  gap: 20px;
 }
 .map_content {
-  flex: 1;
+  flex: 2;
   border: 1px dashed #cfcfcf;
   border-radius: 8px;
   background: #f8f9fa;
@@ -257,34 +310,22 @@ main {
   align-items: center;
   justify-content: center;
   color: #777;
-  font-size: 0.95rem;
-  text-align: center;
-  margin-top: 10px;
-  min-height: 0;
-}
-
-/* =======================
-   두 번째 라인 (2:1:2 고정)
-======================= */
-.second_line {
-  display: grid;                  /* ✅ 행 높이는 main_body가 결정 */
-  grid-template-columns: 2fr 1fr 2fr; /* ✅ 2:1:2 비율 */
-  gap: 20px;
   overflow: hidden;
-  min-height: 0;
 }
-
-.log,
+.robot_camera_section {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+  gap: 20px;
+}
 .robot_status,
 .camera {
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  padding: 20px;
+  background: #fafafa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 15px;
   display: flex;
   flex-direction: column;
-  min-height: 0;                  /* ✅ 내부 스크롤만 허용 */
-  overflow: hidden;
 }
 
 /* 작업 내역(빈 틀 유지) */
@@ -309,8 +350,6 @@ main {
   min-height: 0;
 }
 .robot_card {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
   background: #f9f9f9;
   padding: 10px;
   text-align: center;
@@ -341,122 +380,127 @@ main {
   align-items: center;
   justify-content: center;
   color: #777;
-  font-size: 0.95rem;
-  text-align: center;
-  margin-top: 10px;
-  min-height: 0;
 }
 
 /* =======================
-   타이틀 통일
+   타이틀 밑줄
 ======================= */
-.order > p:first-child,
-.map > p:first-child,
+.order > p:first-of-type,
 .log_t,
-.robot_status > p:first-child,
-.camera > p:first-child {
+.summary > p:first-of-type,
+.right_panel > p:first-of-type,
+.robot_status > p:first-of-type {
   margin: 0 0 12px 0;
   padding-bottom: 8px;
   border-bottom: 2px solid #e0e0e0;
   font-size: 1rem;
   font-weight: 700;
   color: #34495e;
-  letter-spacing: 0.3px;
-}
-
-.sidebar a.active {
-  background-color: #f3f4f6;
-  color: #2e404b;
-  font-weight: 700;
-}
-.sidebar a.active::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 4px;
-  height: 100%;
-  background-color: #293942;
-  border-radius: 4px;
-}
-.sidebar a {
-  position: relative;
 }
 
 /* =======================
-   확인 팝업 스타일
+   명령 로그
 ======================= */
-.confirm_popup {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: rgba(0,0,0,0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.popup_box {
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px 30px;
-  text-align: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  animation: fadeIn 0.2s ease;
-}
-.popup_box p {
-  margin-bottom: 16px;
-  font-size: 15px;
-  color: #2e404b;
-  font-weight: 600;
-}
-.popup_buttons {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-}
-.popup_btn {
-  min-width: 60px;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-.popup_btn.yes { background-color: #435d6d; color: #fff; }
-.popup_btn.no { background-color: #919191; color: #fff; }
-.popup_btn:hover { opacity: 0.9; }
-
-.log_text_wrapper {
-  flex: 1;
-  overflow-y: auto;
-  border: 1px solid #e6e6e6;
-  border-radius: 8px;
-  background-color: #fafafa;
-  padding: 10px;
-  font-size: 14px;
-  color: #555;
+.command_log {
+  border-top: 1px solid #eee;
   margin-top: 10px;
+  padding-top: 10px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
+
+.queue_title {
+  font-weight: 700;
+  color: #34495e;
+  margin-bottom: 6px;
+}
+
+.log_area {
+  flex: 1;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: #fafafa;
+  padding: 8px;
+  font-size: 0.85rem;
+  color: #333;
+  overflow-y: auto;
+  height: 140px;
+}
+
 .log_entry {
   margin: 4px 0;
-  padding: 4px 8px;
-  background: #f0f6ff;
-  border-left: 3px solid #407185;
-  border-radius: 4px;
-  font-weight: 500;
-  color: #2e404b;
+  font-family: 'Consolas', monospace;
 }
 
-.cancel_btn {
-  background-color: #c66;   /* 붉은 회색톤 */
+.log_entry.in {
+  color: #27ae60;
+}
+.log_entry.out {
+  color: #c0392b;
+}
+
+.log_hint {
+  color: #888;
+  font-style: italic;
+}
+
+/* =======================
+   시작 버튼 고정
+======================= */
+.start_btn_container {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  padding-top: 6px;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+.start_btn {
+  background-color: #2980b9;
   color: white;
   border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  width: 100%;
 }
-.cancel_btn:hover {
-  background-color: #a33;
+.start_btn:hover {
+  opacity: 0.9;
 }
+
+.right_panel_header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 6px;
+}
+
+/* 타이틀은 왼쪽 정렬 유지 */
+.right_panel_header p {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #34495e;
+  margin: 0;
+}
+
+/* ✅ 타이틀 오른쪽에서 10px만 떨어지게 */
+.robot_status_select {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.9rem;
+  color: #34495e;
+  background: #fff;
+  cursor: pointer;
+  min-width: 120px;
+  margin-left: 10px;  /* ← 여기가 핵심 */
+}
+.robot_status_select:hover {
+  border-color: #407185;
+}
+

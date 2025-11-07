@@ -1,5 +1,5 @@
-# app/schemas/robot_schema.py
 from pydantic import BaseModel
+from typing import Optional
 
 class RobotBase(BaseModel):
     name: str
@@ -9,8 +9,8 @@ class RobotCreate(RobotBase):
     pass
 
 class RobotUpdate(BaseModel):
-    name: str | None = None
-    ip: str | None = None
+    name: Optional[str] = None
+    ip: Optional[str] = None
 
 class RobotResponse(RobotBase):
     id: int
