@@ -19,6 +19,10 @@ from app.models import *
 # ✅ WebSocket 연결 관리 유틸
 from app.websocket.manager import register, unregister, broadcast_text
 
+# ✅ ROS 리스너 통합
+from app.core.ros.listener import RosListenerManager
+import threading
+
 app = FastAPI(title="WMS FastAPI Server", debug=settings.DEBUG)
 
 # ✅ CORS 허용
@@ -55,41 +59,54 @@ async def websocket_endpoint(websocket: WebSocket):
     global latest_data
     await websocket.accept()
     await register(websocket)
-    print("[EC2] WebSocket connected")
+    print("[WMS] WebSocket connected")
 
     try:
         while True:
             data = await websocket.receive_text()
-            print(f"[EC2] 수신 데이터 ← {data}")
+            print(f"[WMS] 수신 데이터 ← {data}")
 
             # ✅ init_request 대응
             if not data or not data.startswith("{"):
                 if data == "init_request" and latest_data:
                     await websocket.send_text(latest_data)
-                    print("[EC2] 초기 데이터 전송 → 클라이언트")
+                    print("[WMS] 초기 데이터 전송 → 클라이언트")
                 else:
-                    print(f"[EC2] 비JSON 데이터 무시: {data}")
+                    print(f"[WMS] 비JSON 데이터 무시: {data}")
                 continue
 
             # ✅ JSON 파싱
             try:
                 msg = json.loads(data)
             except json.JSONDecodeError:
-                print(f"[EC2] JSON 파싱 실패: {data}")
+                print(f"[WMS] JSON 파싱 실패: {data}")
                 continue
 
             # ✅ 최신 데이터 저장
             latest_data = data
 
-            # ✅ 로컬(WASDController) → 웹 실시간 브로드캐스트
+            # ✅ 로컬 → 웹 실시간 브로드캐스트
             await broadcast_text(data)
 
     except WebSocketDisconnect:
-        print("[EC2] WebSocket disconnected")
+        print("[WMS] WebSocket disconnected")
         await unregister(websocket)
 
-# ✅ DB 테이블 자동 생성
+# ✅ DB 테이블 자동 생성 + ROS 통합 시작
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
     print("✅ DB 테이블 자동 생성 완료 ✅")
+
+    # ✅ ROS Listener Manager 실행
+    def run_ros_listener():
+        ros_manager = RosListenerManager(host="192.168.1.47", port=9090)
+        ros_manager.start()
+
+    thread = threading.Thread(target=run_ros_listener, daemon=True)
+    thread.start()
+    print("✅ ROS Listener 스레드 실행 중...")
+
+@app.on_event("shutdown")
+def on_shutdown():
+    print("🛑 서버 종료 중...")

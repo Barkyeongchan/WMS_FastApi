@@ -5,7 +5,7 @@ from app.core.config import settings
 # DB URL 먼저 정의
 DB_URL = (
     f"mysql+pymysql://{settings.DB_USER}:{settings.DB_PASSWORD}"
-    f"@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
+    f"@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}?charset=utf8mb4"
 )
 
 # 그다음 engine 생성
