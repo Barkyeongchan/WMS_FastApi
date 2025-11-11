@@ -21,5 +21,19 @@ Thumbs.db
 # SQLite (필요시 제외)
 *.db
 
+# Alembic (마이그레이션 설정 파일 무시)
 alembic.ini
 alembic
+
+# MariaDB / MySQL data folder: DB 바이너리 파일 전부 무시
+/data/
+**/data/
+*.ibd
+*.ibtmp*
+aria_log*
+*.err
+*.pid
+tc.log
+undo*
+private_key.pem
+public_key.pem
