@@ -114,8 +114,6 @@ class ROSRobotConnection:
 # ✅ 다중 로봇 연결 관리자
 # ============================================================
 class ROSConnectionManager:
-    """다중 로봇 연결 관리 (토픽/명령 제외)"""
-
     def __init__(self):
         self.active_robot = None
         self.clients = {}
@@ -130,10 +128,11 @@ class ROSConnectionManager:
         ok = client.connect()
         if ok:
             self.clients[name] = client
-            self.active_robot = name
+            self.active_robot = name  # ✅ 현재 활성 로봇 이름 저장
             print(f"[ROS] 🟢 활성 로봇 = {name}")
         else:
             print(f"[ROS] ❌ {name} 연결 실패")
+
 
     def disconnect_robot(self, name: str):
         """로봇 연결 해제"""

@@ -536,3 +536,6 @@ main {
 .pin_control .move_pin_btn {
   margin-top: 5px;
 }
+
+/* 모달 숨김 제어 */
+.hidden { display: none !important; }
