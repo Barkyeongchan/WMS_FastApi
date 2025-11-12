@@ -1,3 +1,4 @@
+# app/main.py
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -12,20 +13,20 @@ from app.routers.category_router import router as category_router
 from app.routers.pin_router import router as pin_router
 from app.routers.page_router import router as page_router
 
-import json
+from app.websocket.manager import register, unregister
 from app.core.database import Base, engine
-from app.models import *
 
-# ✅ WebSocket 연결 관리 유틸
-from app.websocket.manager import register, unregister, broadcast_text
+# ✅ 추가
+from app.core.ros.ros_manager import ros_manager
 
-# ✅ ROS 리스너 통합
-from app.core.ros.listener import RosListenerManager
 import threading
+import json
 
+# ---------------------------------------------
+# ✅ FastAPI 기본 설정
+# ---------------------------------------------
 app = FastAPI(title="WMS FastAPI Server", debug=settings.DEBUG)
 
-# ✅ CORS 허용
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -34,11 +35,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ 정적/템플릿 설정
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
+# ---------------------------------------------
 # ✅ 라우터 등록
+# ---------------------------------------------
 app.include_router(page_router)
 app.include_router(stock_router)
 app.include_router(robot_router)
@@ -46,67 +48,53 @@ app.include_router(log_router)
 app.include_router(category_router)
 app.include_router(pin_router)
 
+
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request, "title": "WMS Dashboard"})
 
-# ✅ 최근 수신 데이터 (init_request 용)
-latest_data = None
 
+# ---------------------------------------------
 # ✅ WebSocket 엔드포인트
+# ---------------------------------------------
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    global latest_data
     await websocket.accept()
     await register(websocket)
-    print("[WMS] WebSocket connected")
+    print("[WS] 클라이언트 연결됨 ✅")
 
     try:
         while True:
             data = await websocket.receive_text()
-            print(f"[WMS] 수신 데이터 ← {data}")
-
-            # ✅ init_request 대응
-            if not data or not data.startswith("{"):
-                if data == "init_request" and latest_data:
-                    await websocket.send_text(latest_data)
-                    print("[WMS] 초기 데이터 전송 → 클라이언트")
-                else:
-                    print(f"[WMS] 비JSON 데이터 무시: {data}")
-                continue
-
-            # ✅ JSON 파싱
+            print(f"[WS] 수신 ← {data}")
+            # 클라이언트에서 수동 제어 명령 등 보낼 때 처리 가능 (예: /cmd_vel)
             try:
                 msg = json.loads(data)
+                if msg.get("type") == "cmd_vel":
+                    payload = msg.get("payload", {})
+                    ros_manager.send_cmd(payload.get("linear", 0.0), payload.get("angular", 0.0))
             except json.JSONDecodeError:
-                print(f"[WMS] JSON 파싱 실패: {data}")
-                continue
-
-            # ✅ 최신 데이터 저장
-            latest_data = data
-
-            # ✅ 로컬 → 웹 실시간 브로드캐스트
-            await broadcast_text(data)
+                pass
 
     except WebSocketDisconnect:
-        print("[WMS] WebSocket disconnected")
         await unregister(websocket)
+        print("[WS] 연결 해제 ❌")
 
-# ✅ DB 테이블 자동 생성 + ROS 통합 시작
+
+# ---------------------------------------------
+# ✅ 서버 이벤트 훅
+# ---------------------------------------------
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
     print("✅ DB 테이블 자동 생성 완료 ✅")
+    print("🚀 FastAPI + ROS Bridge 서버 시작 중...")
+    print("⚙️  ros_manager는 동적으로 로봇 연결 시 활성화됩니다.")
 
-    # ✅ ROS Listener Manager 실행
-    def run_ros_listener():
-        ros_manager = RosListenerManager(host="192.168.1.47", port=9090)
-        ros_manager.start()
-
-    thread = threading.Thread(target=run_ros_listener, daemon=True)
-    thread.start()
-    print("✅ ROS Listener 스레드 실행 중...")
 
 @app.on_event("shutdown")
 def on_shutdown():
     print("🛑 서버 종료 중...")
+    if ros_manager.active_robot:
+        ros_manager.disconnect_robot(ros_manager.active_robot)
+    print("🧹 모든 ROS 연결 종료 완료")

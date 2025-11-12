@@ -1,33 +1,38 @@
-# app/websocket/manager.py
-from typing import List
+import asyncio
 from fastapi import WebSocket
-import json
 
-active_connections: List[WebSocket] = []
+_active_clients = []
 
-async def register(websocket: WebSocket):
-    active_connections.append(websocket)
-    print(f"[EC2] WebSocket registered (total={len(active_connections)})")
+async def register(ws: WebSocket):
+    """클라이언트 등록 (accept는 main.py에서 이미 수행됨)"""
+    _active_clients.append(ws)
+    print(f"[WS] 클라이언트 연결됨 (total={len(_active_clients)}) ✅")
 
-async def unregister(websocket: WebSocket):
-    if websocket in active_connections:
-        active_connections.remove(websocket)
-        print(f"[EC2] WebSocket unregistered (total={len(active_connections)})")
+async def unregister(ws: WebSocket):
+    """클라이언트 해제"""
+    if ws in _active_clients:
+        _active_clients.remove(ws)
+    print(f"[WS] 클라이언트 해제됨 (total={len(_active_clients)})")
 
-async def broadcast_text(text: str):
-    """모든 연결된 WebSocket 클라이언트에 문자열 전송"""
-    dead = []
-    for ws in active_connections:
+async def broadcast_json(data: dict):
+    """비동기 broadcast"""
+    for ws in list(_active_clients):
         try:
-            await ws.send_text(text)
+            await ws.send_json(data)
         except Exception:
-            dead.append(ws)
+            await unregister(ws)
 
-    for ws in dead:
-        if ws in active_connections:
-            active_connections.remove(ws)
-            print("[EC2] 죽은 WebSocket 제거")
+class WSManager:
+    """스레드와 비동기 양쪽에서 broadcast 가능"""
+    def __init__(self):
+        self.loop = asyncio.get_event_loop()
 
-async def broadcast_json(message: dict):
-    """모든 연결된 WebSocket 클라이언트에 JSON 전송"""
-    await broadcast_text(json.dumps(message))
+    def broadcast(self, msg: dict):
+        """외부 스레드에서도 안전하게 broadcast"""
+        try:
+            asyncio.run_coroutine_threadsafe(broadcast_json(msg), self.loop)
+        except RuntimeError:
+            loop = asyncio.get_event_loop()
+            asyncio.run_coroutine_threadsafe(broadcast_json(msg), loop)
+
+ws_manager = WSManager()
