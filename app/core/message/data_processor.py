@@ -137,20 +137,54 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
         }
 
     # =========================================================
-    # 🧩 8. Diagnostics (시스템 상태)
+    # 🧩 8. Diagnostics (시스템 상태 - 간결 요약)
     # =========================================================
     elif topic_name == '/diagnostics':
-        status = msg['status'][0] if msg.get('status') else {}
+        status_list = msg.get('status', []) or []
+    
+        # 기본값
+        overall_level = 0
+        summary = "정상"
+    
+        for s in status_list:
+            lvl = int(s.get('level', 0))
+            name = (s.get('name') or '').lower()
+            message = (s.get('message') or '').lower()
+    
+            if lvl > overall_level:
+                overall_level = lvl
+    
+            # level 2: 오류
+            if lvl == 2:
+                if ("lidar" in name or "connect" in message or "lost" in message):
+                    summary = "센서 끊김"
+                else:
+                    summary = "시스템 오류"
+                overall_level = 2
+                break
+            
+            # level 1: 경고
+            elif lvl == 1 and overall_level < 2:
+                if "temp" in message or "temperature" in message:
+                    summary = "온도 높음"
+                elif "battery" in name or "battery" in message:
+                    summary = "배터리 약함"
+                else:
+                    summary = "주의"
+                overall_level = 1
+    
+        color = "green" if overall_level == 0 else ("orange" if overall_level == 1 else "red")
+    
         return {
             "type": "diagnostics",
             "payload": {
                 "robot_name": robot_name,
                 "timestamp": timestamp,
-                "name": status.get('name', ''),
-                "message": status.get('message', ''),
-                "level": status.get('level', 0)
+                "status": summary,   # ✅ 한 줄 요약
+                "color": color       # ✅ 색상
             }
         }
+
 
     # =========================================================
     # 📷 9. Camera Image (optional - base64 인코딩)

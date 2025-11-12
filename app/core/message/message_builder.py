@@ -75,13 +75,13 @@ def build_message(topic_type: str, data: dict) -> dict:
             "key": data.get("key", ""),
         }
 
-    elif topic_type == "diagnostics":
+    # 적당한 위치(다른 elif 사이)에 추가
+    elif topic_type == "diagnostics":  # [ADD: SYSTEM STATUS]
         payload = {
             "robot_name": robot_name,
             "timestamp": timestamp,
-            "name": data.get("name", ""),
-            "message": data.get("message", ""),
-            "level": data.get("level", 0),
+            "status": data.get("status", "정상"),
+            "color": data.get("color", "green"),
         }
 
     elif topic_type == "camera":

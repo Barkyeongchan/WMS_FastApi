@@ -76,7 +76,7 @@ class RosListenerManager:
             asyncio.run(broadcast_text(json.dumps(payload)))
 
         self.listener = RosListener(self.ros, on_message)
-        for t in ["/odom", "/battery_state", "/cmd_vel", "/camera"]:
+        for t in ["/odom", "/battery_state", "/cmd_vel", "/camera", "/diagnostics"]:
             self.listener.subscribe(t)
 
         print("[ROS] Listener started ✅")

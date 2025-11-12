@@ -35,7 +35,7 @@ class ROSRobotConnection:
 
                     # ✅ 리스너 시작 (battery 등 구독)
                     self.listener = RosListener(self.ros, self.name)
-                    for topic in ["/battery_state", "/odom", "/cmd_vel"]:
+                    for topic in ["/battery_state", "/odom", "/cmd_vel", "/diagnostics"]:
                         self.listener.subscribe(topic)
 
                     # 상태 감시 스레드 시작

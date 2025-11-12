@@ -10,6 +10,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const ipInput = document.getElementById("robot_ip_input");
   const netStatusEl = document.querySelector(".value.network_status");
 
+  // [ADD] 시스템 상태 요소
+  const sysStatusEl = document.querySelector(".value.system_status");
+
   // 🔹 모달 관련 요소
   const openModalBtn  = document.getElementById("open_modal_btn");
   const modal         = document.getElementById("robot_modal");
@@ -22,7 +25,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!modal) return;
     modal.classList.remove("hidden");
     document.body.style.overflow = "hidden"; // 스크롤 잠금
-    // 첫 입력 포커스
     if (nameInput) nameInput.focus();
   }
 
@@ -36,13 +38,12 @@ document.addEventListener("DOMContentLoaded", () => {
   if (openModalBtn) openModalBtn.addEventListener("click", openModal);
   if (modalCloseBtn) modalCloseBtn.addEventListener("click", closeModal);
 
-  // 바깥 영역 클릭 시 닫기
   if (modal) {
     modal.addEventListener("click", (e) => {
       if (e.target === modal) closeModal();
     });
   }
-  // ESC로 닫기
+
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && modal && !modal.classList.contains("hidden")) {
       closeModal();
@@ -56,12 +57,12 @@ document.addEventListener("DOMContentLoaded", () => {
   ws.onopen = () => {
     console.log("[WS] Connected ✅", WS_URL);
     ws.send(JSON.stringify({ type: "init_request" }));
-    // UI 초기상태
     if (netStatusEl) {
       netStatusEl.textContent = "해제됨";
       netStatusEl.style.color = "#e74c3c";
     }
   };
+
   ws.onerror = (err) => console.error("[WS] Error:", err);
   ws.onclose = () => console.warn("[WS] Disconnected ❌");
 
@@ -75,7 +76,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const data = JSON.parse(event.data);
 
-      // ✅ 연결 상태 표시는 WS 메시지 기준으로만
+      // ✅ 연결 상태 표시
       if (data.type === "status") {
         const { robot_name, ip, connected } = data.payload || {};
         console.log(`[STATUS] ${robot_name || "-"} (${ip || "-"}) connected=${connected}`);
@@ -84,29 +85,34 @@ document.addEventListener("DOMContentLoaded", () => {
           netStatusEl.style.color = connected ? "#2ecc71" : "#e74c3c";
         }
 
-        // ✅ 연결이 해제되면 배터리 0%로 초기화
         if (!connected) {
           updateBattery(0);
-          
+
+          const sysRow = document.querySelector(".value.system_status");
+          if (sysRow) { sysRow.textContent = "-"; sysRow.style.color = "#999"; }
+
           const posRow = document.querySelector(".status_row .value.position_value");
           if (posRow) posRow.textContent = "( - , - )";
 
-          // 속도 텍스트 초기화
           const speedRow = document.querySelector(".status_row.gauge_row .value.small");
           if (speedRow) speedRow.textContent = "0.00 m/s";
 
-          // 속도 게이지 초기화
           const speedBar = document.querySelector(".bar_fill.speed");
           if (speedBar) {
             speedBar.style.width = "0%";
             speedBar.style.background = "linear-gradient(90deg, #ccc, #999)";
+          }
+
+          // [ADD] 연결 해제 시 시스템 표시 초기화
+          if (sysStatusEl) {
+            sysStatusEl.textContent = "-";
+            sysStatusEl.style.color = "#999";
           }
         }
       }
 
       // ✅ 배터리 처리
       if (data.type === "battery") {
-        // payload 우선, 그 다음 루트 레벨 fallback
         let level =
           data?.payload?.percentage ??
           data?.payload?.level ??
@@ -114,10 +120,9 @@ document.addEventListener("DOMContentLoaded", () => {
           data?.level;
 
         if (level == null || isNaN(level)) return;
-        if (level <= 1) level *= 100; // 0~1 → 0~100 변환
+        if (level <= 1) level *= 100;
         level = Math.max(0, Math.min(100, level));
 
-        // "배터리" 라벨 가진 행 찾기
         const rows = document.querySelectorAll(".status_row.gauge_row");
         let batteryRow = null;
         rows.forEach((row) => {
@@ -150,29 +155,24 @@ document.addEventListener("DOMContentLoaded", () => {
           const pos = data.payload?.position || {};
           const lin = data.payload?.linear || {};
           const ang = data.payload?.angular || {};
-        
-          // ✅ 위치 표시 (기존 "(-, -)" 텍스트 갱신)
+
           const posRow = document.querySelector(".status_row .value.position_value");
           if (posRow) {
-            posRow.textContent = `(${pos.x?.toFixed(2) ?? "-"}, ${pos.y?.toFixed(2) ?? "-"})`;
+            posRow.textContent = `(${pos.x?.toFixed(1) ?? "-"}, ${pos.y?.toFixed(1) ?? "-"})`;
           }
-        
-          // ✅ 속도 값 (m/s)
+
           const linearX = lin.x ?? 0;
           const speed = Math.abs(linearX);
           const speedValue = `${speed.toFixed(2)} m/s`;
-        
-          // ✅ 속도 텍스트 갱신
+
           const speedRow = document.querySelector(".status_row.gauge_row .value.small");
           if (speedRow) speedRow.textContent = speedValue;
-        
-          // ✅ 속도 게이지 바 폭 조정 (최대 1.0 m/s 기준)
+
           const speedBar = document.querySelector(".bar_fill.speed");
           if (speedBar) {
             const percent = Math.min((speed / 1.0) * 100, 100);
             speedBar.style.width = `${percent}%`;
-          
-            // 색상 단계별 (저속: 파랑 → 중속: 초록 → 고속: 빨강)
+
             if (percent < 40) {
               speedBar.style.background = "linear-gradient(90deg, #3498db, #2980b9)";
             } else if (percent < 80) {
@@ -181,9 +181,18 @@ document.addEventListener("DOMContentLoaded", () => {
               speedBar.style.background = "linear-gradient(90deg, #e74c3c, #c0392b)";
             }
           }
-        
         } catch (e) {
           console.error("odom 처리 오류:", e);
+        }
+      }
+
+      // ✅ [ADD] 시스템 상태 처리 (/diagnostics)
+      if (data.type === "diagnostics") {
+        const status = data.payload?.status ?? "-";
+        const color  = data.payload?.color  ?? "#999";
+        if (sysStatusEl) {
+          sysStatusEl.textContent = status;
+          sysStatusEl.style.color = color;
         }
       }
 
@@ -192,7 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  // ====== 로봇 목록 로드 (+ 마지막 선택 복원) ======
+  // ====== 로봇 목록 로드 ======
   async function loadRobotList() {
     try {
       const res = await fetch("/robots/");
@@ -223,7 +232,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ====== 로봇 연결 요청 (디바운스/중복 방지) ======
+  // ====== 로봇 연결 요청 ======
   let connectBusy = false;
   async function connectRobot(id) {
     if (connectBusy || !id) return;
@@ -235,14 +244,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await res.json();
       console.log(`[CONNECT] ${data.message}`);
       localStorage.setItem(STORAGE_KEY, id);
-      // ⚠️ UI는 WS 'status' 메시지로만 갱신 (여기서는 바꾸지 않음)
     } catch (err) {
       console.error("[로봇 연결 요청 오류]", err);
     } finally {
       setTimeout(() => {
         connectBusy = false;
         selectEl.disabled = false;
-      }, 300); // 짧은 디바운스
+      }, 300);
     }
   }
 
@@ -282,7 +290,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ✅ 배터리 게이지 업데이트 함수 (공통화)
+  // ✅ 배터리 게이지 업데이트 함수
   function updateBattery(level) {
     const rows = document.querySelectorAll(".status_row.gauge_row");
     let batteryRow = null;
@@ -300,7 +308,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (bar) bar.style.width = level.toFixed(0) + "%";
     if (textEl) textEl.textContent = level.toFixed(0) + "%";
 
-    // 색상 경고 처리
     if (bar) {
       if (level < 20) {
         bar.style.background = "linear-gradient(90deg, #e74c3c, #c0392b)";
@@ -310,7 +317,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   }
-
 
   // 초기 로드
   loadRobotList();
