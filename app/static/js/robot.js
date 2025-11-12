@@ -54,23 +54,51 @@ document.addEventListener("DOMContentLoaded", () => {
   const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
   const ws = new WebSocket(WS_URL);
 
+  // [NEW] 상태 수신 타임아웃을 위한 타임스탬프
+  let lastStatusAt = 0;
+  let wsOpenedAt = 0;
+  let initStatusTimeout = null;
+
   ws.onopen = () => {
     console.log("[WS] Connected ✅", WS_URL);
+    wsOpenedAt = Date.now();
     ws.send(JSON.stringify({ type: "init_request" }));
+
+    // [CHANGE] 여기서 바로 '해제됨'으로 덮어쓰지 않음
     if (netStatusEl) {
-      netStatusEl.textContent = "해제됨";
-      netStatusEl.style.color = "#e74c3c";
+      netStatusEl.textContent = "동기화 중…";
+      netStatusEl.style.color = "#999";
     }
+
+    // [NEW] 1.5초 내에 status가 안 오면 해제됨으로 표시
+    if (initStatusTimeout) clearTimeout(initStatusTimeout);
+    initStatusTimeout = setTimeout(() => {
+      if (lastStatusAt < wsOpenedAt) {
+        if (netStatusEl) {
+          netStatusEl.textContent = "해제됨";
+          netStatusEl.style.color = "#e74c3c";
+        }
+      }
+    }, 1500);
   };
 
   ws.onerror = (err) => console.error("[WS] Error:", err);
-  ws.onclose = () => console.warn("[WS] Disconnected ❌");
+  ws.onclose = () => {
+    console.warn("[WS] Disconnected ❌");
+    if (initStatusTimeout) {
+      clearTimeout(initStatusTimeout);
+      initStatusTimeout = null;
+    }
+  };
 
   // keep-alive
   const pingTimer = setInterval(() => {
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" }));
   }, 25000);
-  window.addEventListener("beforeunload", () => clearInterval(pingTimer));
+  window.addEventListener("beforeunload", () => {
+    clearInterval(pingTimer);
+    if (initStatusTimeout) clearTimeout(initStatusTimeout);
+  });
 
   ws.onmessage = (event) => {
     try {
@@ -78,6 +106,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // ✅ 연결 상태 표시
       if (data.type === "status") {
+        lastStatusAt = Date.now(); // [NEW] 상태 수신 시각 업데이트
+
         const { robot_name, ip, connected } = data.payload || {};
         console.log(`[STATUS] ${robot_name || "-"} (${ip || "-"}) connected=${connected}`);
         if (netStatusEl) {
@@ -226,6 +256,28 @@ document.addEventListener("DOMContentLoaded", () => {
       if (savedId && selectEl.querySelector(`option[value='${savedId}']`)) {
         selectEl.value = savedId;
         console.log(`[RESTORE] 마지막 선택된 로봇 복원: ${savedId}`);
+
+        // [NEW] 1) 우선 REST로 현재 상태 받아서 즉시 UI 반영
+        try {
+          const st = await fetch(`/robots/status/${savedId}`);
+          if (st.ok) {
+            const s = await st.json();
+            if (netStatusEl) {
+              if (s?.connected) {
+                netStatusEl.textContent = "연결됨";
+                netStatusEl.style.color = "#2ecc71";
+              } else {
+                netStatusEl.textContent = "해제됨";
+                netStatusEl.style.color = "#e74c3c";
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("초기 상태 조회 실패:", e);
+        }
+
+        // [NEW] 2) 이어서 자동 연결 요청(WS 동기화 트리거)
+        await connectRobot(savedId);
       }
     } catch (e) {
       console.error(e);
