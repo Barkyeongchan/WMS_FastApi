@@ -1,11 +1,14 @@
+# app/core/ros/listener.py
 import roslibpy
-from app.websocket.manager import broadcast_text
-import json, threading, asyncio
+import json, asyncio
+from app.core.message.data_processor import process_ros_data
+from app.core.message.message_builder import build_message
+from app.websocket.manager import ws_manager
 
 class RosListener:
-    def __init__(self, ros: roslibpy.Ros, callback):
+    def __init__(self, ros: roslibpy.Ros, robot_name: str):
         self.ros = ros
-        self.callback = callback
+        self.robot_name = robot_name
         self.topics = []
 
     def subscribe(self, topic_name: str):
@@ -29,11 +32,21 @@ class RosListener:
         topic = roslibpy.Topic(self.ros, topic_name, msg_type)
 
         def _cb(msg, t=topic_name):
-            self.callback(t, msg)
+            self._handle_message(t, msg)
 
         topic.subscribe(_cb)
         self.topics.append(topic)
         print(f"[ROS] Subscribe → {topic_name} ({msg_type})")
+
+    def _handle_message(self, topic_name, msg):
+        try:
+            data = process_ros_data(topic_name, msg, robot_name=self.robot_name)
+            if not data:
+                return
+            ws_msg = build_message(data["type"], data["payload"])
+            ws_manager.broadcast(ws_msg)
+        except Exception as e:
+            print(f"[ROS] ⚠️ {topic_name} 처리 오류:", e)
 
     def close(self):
         print("[ROS] Listener closed")
@@ -43,6 +56,7 @@ class RosListener:
             except Exception:
                 pass
         self.topics.clear()
+
 
 class RosListenerManager:
     def __init__(self, host="192.168.1.47", port=9090):

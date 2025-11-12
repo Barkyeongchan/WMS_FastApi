@@ -83,6 +83,11 @@ document.addEventListener("DOMContentLoaded", () => {
           netStatusEl.textContent = connected ? "연결됨" : "해제됨";
           netStatusEl.style.color = connected ? "#2ecc71" : "#e74c3c";
         }
+
+        // ✅ 연결이 해제되면 배터리 0%로 초기화
+        if (!connected) {
+          updateBattery(0);
+        }
       }
 
       // ✅ 배터리 처리
@@ -218,6 +223,36 @@ document.addEventListener("DOMContentLoaded", () => {
       await loadRobotList();
     });
   }
+
+  // ✅ 배터리 게이지 업데이트 함수 (공통화)
+  function updateBattery(level) {
+    const rows = document.querySelectorAll(".status_row.gauge_row");
+    let batteryRow = null;
+    rows.forEach(row => {
+      const label = row.querySelector(".label");
+      if (label && label.textContent.trim().includes("배터리")) {
+        batteryRow = row;
+      }
+    });
+    if (!batteryRow) return;
+
+    const bar = batteryRow.querySelector(".bar_fill.battery");
+    const textEl = batteryRow.querySelector(".value.small");
+
+    if (bar) bar.style.width = level.toFixed(0) + "%";
+    if (textEl) textEl.textContent = level.toFixed(0) + "%";
+
+    // 색상 경고 처리
+    if (bar) {
+      if (level < 20) {
+        bar.style.background = "linear-gradient(90deg, #e74c3c, #c0392b)";
+      } else {
+        bar.style.background = "";
+        bar.classList.add("battery");
+      }
+    }
+  }
+
 
   // 초기 로드
   loadRobotList();
