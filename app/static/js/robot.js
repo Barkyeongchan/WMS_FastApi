@@ -87,6 +87,20 @@ document.addEventListener("DOMContentLoaded", () => {
         // ✅ 연결이 해제되면 배터리 0%로 초기화
         if (!connected) {
           updateBattery(0);
+          
+          const posRow = document.querySelector(".status_row .value.position_value");
+          if (posRow) posRow.textContent = "( - , - )";
+
+          // 속도 텍스트 초기화
+          const speedRow = document.querySelector(".status_row.gauge_row .value.small");
+          if (speedRow) speedRow.textContent = "0.00 m/s";
+
+          // 속도 게이지 초기화
+          const speedBar = document.querySelector(".bar_fill.speed");
+          if (speedBar) {
+            speedBar.style.width = "0%";
+            speedBar.style.background = "linear-gradient(90deg, #ccc, #999)";
+          }
         }
       }
 
@@ -129,6 +143,50 @@ document.addEventListener("DOMContentLoaded", () => {
 
         console.log(`[BATTERY] ${data?.payload?.robot_name || "-"} → ${level.toFixed(0)}%`);
       }
+
+      // ✅ 위치 및 속도 데이터 실시간 갱신
+      if (data.type === "odom") {
+        try {
+          const pos = data.payload?.position || {};
+          const lin = data.payload?.linear || {};
+          const ang = data.payload?.angular || {};
+        
+          // ✅ 위치 표시 (기존 "(-, -)" 텍스트 갱신)
+          const posRow = document.querySelector(".status_row .value.position_value");
+          if (posRow) {
+            posRow.textContent = `(${pos.x?.toFixed(2) ?? "-"}, ${pos.y?.toFixed(2) ?? "-"})`;
+          }
+        
+          // ✅ 속도 값 (m/s)
+          const linearX = lin.x ?? 0;
+          const speed = Math.abs(linearX);
+          const speedValue = `${speed.toFixed(2)} m/s`;
+        
+          // ✅ 속도 텍스트 갱신
+          const speedRow = document.querySelector(".status_row.gauge_row .value.small");
+          if (speedRow) speedRow.textContent = speedValue;
+        
+          // ✅ 속도 게이지 바 폭 조정 (최대 1.0 m/s 기준)
+          const speedBar = document.querySelector(".bar_fill.speed");
+          if (speedBar) {
+            const percent = Math.min((speed / 1.0) * 100, 100);
+            speedBar.style.width = `${percent}%`;
+          
+            // 색상 단계별 (저속: 파랑 → 중속: 초록 → 고속: 빨강)
+            if (percent < 40) {
+              speedBar.style.background = "linear-gradient(90deg, #3498db, #2980b9)";
+            } else if (percent < 80) {
+              speedBar.style.background = "linear-gradient(90deg, #2ecc71, #27ae60)";
+            } else {
+              speedBar.style.background = "linear-gradient(90deg, #e74c3c, #c0392b)";
+            }
+          }
+        
+        } catch (e) {
+          console.error("odom 처리 오류:", e);
+        }
+      }
+
     } catch (err) {
       console.error("[WS 메시지 처리 오류]", err);
     }
