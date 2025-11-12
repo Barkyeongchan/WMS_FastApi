@@ -370,6 +370,44 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // ==========================
+  // 🚀 [ADD] 로봇 제어 - 속도 단계별 제한 (슬라이더 기반)
+  // ==========================
+
+  const MAX_SPEED = { 1: 0.2, 2: 0.4, 3: 0.6 };
+  let currentSpeedLevel = 1;
+
+  const speedSlider = document.getElementById("speed_slider");
+  if (speedSlider) {
+    speedSlider.addEventListener("input", (e) => {
+      currentSpeedLevel = Number(e.target.value);
+      console.log(`[속도 단계] ${currentSpeedLevel}단 (${MAX_SPEED[currentSpeedLevel]} m/s)`);
+    });
+  }
+
+  function sendVelocity(linearX, angularZ) {
+    if (ws.readyState !== WebSocket.OPEN) {
+      console.warn("[WS] 연결 안됨, 명령 전송 불가");
+      return;
+    }
+
+    const maxV = MAX_SPEED[currentSpeedLevel];
+    const clampedLinear = Math.max(-maxV, Math.min(maxV, linearX));
+    const clampedAngular = Math.max(-1.0, Math.min(1.0, angularZ));
+
+    const msg = {
+      type: "cmd_vel",
+      payload: {
+        linear: { x: clampedLinear, y: 0.0, z: 0.0 },
+        angular: { x: 0.0, y: 0.0, z: clampedAngular },
+        gear: currentSpeedLevel
+      },
+    };
+
+    ws.send(JSON.stringify(msg));
+    console.log(`[CMD] 전송 → linear=${clampedLinear.toFixed(2)} / angular=${clampedAngular.toFixed(2)} (${currentSpeedLevel}단)`);
+  }
+
   // 초기 로드
-  loadRobotList();
+  loadRobotList();  
 });

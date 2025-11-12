@@ -18,6 +18,7 @@ from app.core.database import Base, engine
 
 # ✅ 추가
 from app.core.ros.ros_manager import ros_manager
+from app.core.ros.publisher import RosPublisher  # ✅ 퍼블리셔 임포트
 
 import threading
 import json
@@ -55,10 +56,17 @@ async def root(request: Request):
 
 
 # ---------------------------------------------
+# ✅ ROS 퍼블리셔 전역 인스턴스
+# ---------------------------------------------
+ros_publisher = None
+
+
+# ---------------------------------------------
 # ✅ WebSocket 엔드포인트
 # ---------------------------------------------
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    global ros_publisher
     await websocket.accept()
     await register(websocket)
     print("[WS] 클라이언트 연결됨 ✅")
@@ -67,14 +75,35 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             print(f"[WS] 수신 ← {data}")
-            # 클라이언트에서 수동 제어 명령 등 보낼 때 처리 가능 (예: /cmd_vel)
+
             try:
                 msg = json.loads(data)
-                if msg.get("type") == "cmd_vel":
-                    payload = msg.get("payload", {})
-                    ros_manager.send_cmd(payload.get("linear", 0.0), payload.get("angular", 0.0))
+                msg_type = msg.get("type")
+                payload = msg.get("payload", {})
+
+                # ✅ cmd_vel 제어 명령 처리
+                if msg_type == "cmd_vel":
+                    if not ros_manager.active_robot:
+                        print("[WARN] 활성 로봇 없음 → 제어 불가")
+                        continue
+
+                    # 현재 활성 로봇의 ROS 인스턴스 가져오기
+                    active = ros_manager.active_robot
+                    client = ros_manager.clients.get(active)
+                    if not client or not client.ros or not client.ros.is_connected:
+                        print("[WARN] ROS 연결 안 됨 → 퍼블리시 불가")
+                        continue
+
+                    # 퍼블리셔 없으면 새로 생성
+                    if not ros_publisher:
+                        ros_publisher = RosPublisher(client.ros)
+
+                    # 퍼블리시 실행
+                    ros_publisher.publish_command(payload)
+
             except json.JSONDecodeError:
-                pass
+                print("[ERROR] 잘못된 JSON 수신:", data)
+                continue
 
     except WebSocketDisconnect:
         await unregister(websocket)
