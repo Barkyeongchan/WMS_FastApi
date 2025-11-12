@@ -15,7 +15,7 @@ class RosListener:
 
         topic_map = {
             "/odom": "nav_msgs/msg/Odometry",
-            "/battery": "sensor_msgs/msg/BatteryState",
+            "/battery_state": "sensor_msgs/msg/BatteryState",
             "/cmd_vel": "geometry_msgs/msg/Twist",
             "/amcl_pose": "geometry_msgs/msg/PoseWithCovarianceStamped",
             "/base_link": "geometry_msgs/msg/PoseStamped",
@@ -62,7 +62,7 @@ class RosListenerManager:
             asyncio.run(broadcast_text(json.dumps(payload)))
 
         self.listener = RosListener(self.ros, on_message)
-        for t in ["/odom", "/battery", "/cmd_vel", "/camera"]:
+        for t in ["/odom", "/battery_state", "/cmd_vel", "/camera"]:
             self.listener.subscribe(t)
 
         print("[ROS] Listener started ✅")
