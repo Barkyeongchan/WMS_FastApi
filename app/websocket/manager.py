@@ -1,8 +1,9 @@
-# ✅ websocket/manager.py
+# app/websocket/manager.py
 import asyncio
 from fastapi import WebSocket
 
 _active_clients = []
+
 
 async def register(ws: WebSocket):
     """클라이언트 등록"""
@@ -60,3 +61,39 @@ class WSManager:
 
 
 ws_manager = WSManager()
+
+
+# ================================
+# ✅ 클라이언트 → 서버 메시지 처리
+# ================================
+async def handle_message(ws: WebSocket, data: dict):
+    """
+    /ws 엔드포인트에서 받은 메시지를 라우팅하는 헬퍼.
+
+    사용 예시 (connection.py 같은 곳에서):
+
+        data = await websocket.receive_json()
+        await manager.handle_message(websocket, data)
+    """
+    msg_type = data.get("type")
+    if not msg_type:
+        return
+
+    # ping 은 무시
+    if msg_type == "ping":
+        return
+
+    if msg_type == "init_request":
+        # 필요하면 초기 동기화 로직 추가
+        return
+
+    if msg_type == "cmd_vel":
+        # ROS 쪽으로 속도 명령 전달
+        try:
+            from app.core.ros import ros_manager
+            payload = data.get("payload") or {}
+            ros_manager.ros_manager.send_cmd_vel(payload)
+        except Exception as e:
+            print("[WS] cmd_vel 처리 오류:", e)
+
+    # 추후 mode, goal 등 추가 타입도 여기서 처리 가능

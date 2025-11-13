@@ -539,3 +539,35 @@ main {
 
 /* 모달 숨김 제어 */
 .hidden { display: none !important; }
+
+/* ============================================
+   🔥 자동 / 수동 모드 안내 메시지 스타일 추가
+   기존 레이아웃과 충돌 없음
+============================================ */
+
+.manual_notice {
+  background: #27ae60cc;
+  color: white;
+  font-size: 0.85rem;
+  padding: 8px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.auto_lock_notice {
+  background: #00000055;
+  color: white;
+  font-size: 0.85rem;
+  padding: 8px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* 숨김처리 공통 */
+.hidden {
+  display: none !important;
+}
