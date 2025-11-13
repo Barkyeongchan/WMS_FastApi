@@ -504,3 +504,69 @@ main {
   border-color: #407185;
 }
 
+/* ========== 여러 로봇 상태카드 리스트 ========== */
+#robot_status_list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  height: 100%;
+  padding-right: 8px;
+}
+
+.robot_card {
+  background: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.robot_card_title {
+  font-size: 1rem;
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #34495e;
+}
+
+.robot_card_info {
+  font-size: 0.85rem;
+  color: #555;
+  margin-bottom: 4px;
+}
+
+.robot_card_bar {
+  width: 100%;
+  height: 8px;
+  background: #eee;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.robot_card_bar_fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2ecc71, #27ae60);
+}
+
+.robot_card.offline {
+  opacity: 0.6;
+  filter: grayscale(100%);
+}
+
+/* 로봇 카드 전체 영역: 스크롤 활성화 */
+#robot_status_list {
+  max-height: 250px;   /* 원래 박스 높이 안 넘게 */
+  overflow-y: auto;
+  padding-right: 6px; /* 스크롤 생겨도 밀리지 않게 */
+}
+
+/* 스크롤바 스타일 조금 얇게 */
+#robot_status_list::-webkit-scrollbar {
+  width: 6px;
+}
+
+#robot_status_list::-webkit-scrollbar-thumb {
+  background: #bbb;
+  border-radius: 6px;
+}

@@ -112,9 +112,6 @@
         <div class="right_panel">
           <div class="right_panel_header">
             <p>지도 및 로봇 상태</p>
-            <select id="robot_status_select" class="robot_status_select">
-              <option value="">로봇 선택</option>
-            </select>
           </div>
         
           <div class="map_content">
@@ -122,25 +119,21 @@
           </div>
         
           <div class="robot_camera_section">
+
+            <!-- 로봇 상태 카드 리스트 (여러 대 가능) -->
             <div class="robot_status">
-              <div class="robot_list">
-                <div class="robot_card">
-                  <div class="battery_bar"><div class="battery_fill"></div></div>
-                  <p class="robot_mode">자동</p>
-                  <p class="robot_speed">0km/s</p>
-                  <p class="robot_status_text">A1</p>
-                </div>
+              <div id="robot_status_list" class="robot_list">
               </div>
             </div>
           
+            <!-- 카메라 -->
             <div class="camera">
               <div class="camera_content">
                 <p>※ 실시간 영상 표시 예정</p>
               </div>
             </div>
           </div>
-        </div>
-        
+        </div> 
       </div>
     </div>
   </main>

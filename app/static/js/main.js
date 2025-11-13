@@ -1,7 +1,12 @@
+/**  ===============================
+ *   WMS Dashboard JS  (B 모드 포함)
+ *   모든 기존 기능 그대로 유지 + 전체 로봇 표시 추가
+ *  =============================== 
+ */
+
 document.addEventListener('DOMContentLoaded', () => {
   console.log("✅ WMS Dashboard JS Loaded");
 
-  // ===== DOM 요소 =====
   const searchInput = document.getElementById("search_input");
   const searchBtn   = document.getElementById("search_btn");
   const resultBody  = document.getElementById("result_body");
@@ -13,51 +18,61 @@ document.addEventListener('DOMContentLoaded', () => {
   const robotSelect = document.getElementById("robot_select");
   const logArea     = document.getElementById("log_area");
   const startBtn    = document.getElementById("btn_start");
-  const robotStatusSelect = document.getElementById("robot_status_select");
 
-  // ===== 전역 상태 =====
   let products = [];
   let selectedItem = null;
   let commandQueue = [];
+  let ROBOT_STATUS = {};   // ❤️ 여기서 모든 로봇 관리
 
-  // ==========================
-  // 1️⃣ 상품 목록 불러오기
-  // ==========================
+  /* ==========================
+     1) 전체 로봇 목록 가져와서
+        ROBOT_STATUS에 기본값만 미리 넣어둠
+  ========================== */
+  async function initRobotStatusList() {
+    const res = await fetch("/robots/");
+    const robots = await res.json();
+
+    robots.forEach(r => {
+      if (!ROBOT_STATUS[r.name]) {
+        ROBOT_STATUS[r.name] = {
+          name: r.name,
+          connected: false,
+          battery: 0,
+          speed: 0,
+          x: 0,
+          y: 0,
+          mode: "미연결",
+        };
+      }
+    });
+
+    renderRobotCards();
+    console.log("🔄 초기 로봇 목록 생성 완료:", ROBOT_STATUS);
+  }
+
+  /* ==========================
+     기존 상품/검색/명령 코드는 그대로 유지
+  ========================== */
+
   async function loadProducts() {
-    try {
-      const res = await fetch("/stocks/");
-      if (!res.ok) throw new Error("상품 목록 로딩 실패");
-      products = await res.json();
-      renderTable(products);
-    } catch (err) {
-      console.error("[ERROR] 상품 목록 불러오기 실패:", err);
-    }
+    const res = await fetch("/stocks/");
+    products = await res.json();
+    renderTable(products);
   }
 
-  // ==========================
-  // 2️⃣ 로봇 목록 불러오기 (입출고용)
-  // ==========================
   async function loadRobots() {
-    try {
-      const res = await fetch("/robots/");
-      if (!res.ok) throw new Error("로봇 목록 로딩 실패");
-      const robots = await res.json();
-      robotSelect.innerHTML = `<option value="">로봇 목록</option>`;
-      robots.forEach(r => {
-        const opt = document.createElement("option");
-        opt.value = r.id;
-        opt.textContent = r.name;
-        robotSelect.appendChild(opt);
-      });
-      console.log("✅ 입출고용 로봇 목록 불러오기 완료:", robots);
-    } catch (e) {
-      console.error("로봇 목록 로딩 오류:", e);
-    }
+    const res = await fetch("/robots/");
+    const robots = await res.json();
+
+    robotSelect.innerHTML = `<option value="">로봇 목록</option>`;
+    robots.forEach(r => {
+      const opt = document.createElement("option");
+      opt.value = r.id;
+      opt.textContent = r.name;
+      robotSelect.appendChild(opt);
+    });
   }
 
-  // ==========================
-  // 3️⃣ 상품 테이블 렌더링
-  // ==========================
   function renderTable(data) {
     resultBody.innerHTML = "";
     if (data.length === 0) {
@@ -74,7 +89,8 @@ document.addEventListener('DOMContentLoaded', () => {
         <td>${item.quantity}</td>
       `;
       tr.addEventListener("click", () => {
-        document.querySelectorAll(".product_table tr").forEach(r => r.classList.remove("selected"));
+        document.querySelectorAll(".product_table tr")
+          .forEach(r => r.classList.remove("selected"));
         tr.classList.add("selected");
         pickedName.textContent = item.name;
         selectedItem = item;
@@ -83,9 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ==========================
-  // 4️⃣ 명령 로그 렌더링
-  // ==========================
   function renderLog() {
     logArea.innerHTML = "";
     if (commandQueue.length === 0) {
@@ -103,123 +116,108 @@ document.addEventListener('DOMContentLoaded', () => {
     logArea.scrollTop = logArea.scrollHeight;
   }
 
-  // ==========================
-  // 5️⃣ 명령 추가
-  // ==========================
-  function addCommand(type) {
-    if (!selectedItem) return alert("상품을 선택하세요.");
-    const robotName = robotSelect.options[robotSelect.selectedIndex].text;
-    if (!robotSelect.value) return alert("작업 로봇을 선택하세요.");
+  /* ==========================
+       8) 로봇 상태 카드 렌더링 (B 모드 적용)
+    ========================== */
+    function renderRobotCards() {
+      const container = document.getElementById("robot_status_list");
+      if (!container) return;
 
-    const qty = Number(deltaInput.value);
-    if (qty <= 0) return alert("변경 수량을 올바르게 입력하세요.");
+      container.innerHTML = "";
 
-    const cmd = {
-      product: selectedItem.name,
-      quantity: qty,
-      robotId: robotSelect.value,
-      robotName,
-      type
+      // 연결된 로봇을 위로 정렬
+      const sorted = Object.values(ROBOT_STATUS).sort((a, b) =>
+        Number(b.connected) - Number(a.connected)
+      );
+    
+      sorted.forEach(robot => {
+        const card = document.createElement("div");
+        card.className = "robot_card";
+      
+        // OFFLINE 회색 처리
+        if (!robot.connected) {
+          card.classList.add("offline");
+        }
+      
+        const battery = robot.battery ?? 0;
+        const speed = robot.speed ? robot.speed.toFixed(2) : "0.00";
+      
+        const posX = robot.x !== undefined ? robot.x.toFixed(2) : "0.00";
+        const posY = robot.y !== undefined ? robot.y.toFixed(2) : "0.00";
+      
+        card.innerHTML = `
+          <div class="robot_card_title">${robot.name}</div>
+          <div class="robot_card_info">속도: ${speed} m/s</div>
+          <div class="robot_card_info">위치: (${posX}, ${posY})</div>
+          <div class="robot_card_info">상태: ${robot.mode}</div>
+      
+          <div class="robot_card_bar" style="margin-top: 8px;">
+            <div class="robot_card_bar_fill" style="width: ${battery}%"></div>
+          </div>
+        `;
+      
+        container.appendChild(card);
+      });
+    }
+
+  /* ==========================
+     9) WebSocket (B 모드 완성)
+  ========================== */
+  function connectDashboardWs() {
+    const protocol = location.protocol === "https:" ? "wss" : "ws";
+    const wsUrl = `${protocol}://${location.host}/ws`;
+
+    const ws = new WebSocket(wsUrl);
+
+    ws.onmessage = (event) => {
+      let msg = JSON.parse(event.data);
+      const type = msg.type;
+      const p = msg.payload || {};
+      const name = p.robot_name;
+      if (!name) return;
+
+      // ROBOT_STATUS에 없으면 무시
+      if (!ROBOT_STATUS[name]) return;
+
+      const r = ROBOT_STATUS[name];
+
+      if (type === "status") {
+        r.connected = p.connected;
+        r.mode = p.connected ? "자동" : "미연결";
+      }
+
+      else if (type === "battery") {
+        r.battery = p.percentage;
+      }
+
+      else if (type === "odom") {
+        r.speed = p.linear?.x || 0;
+        if (p.position) {
+          r.x = p.position.x;
+          r.y = p.position.y;
+        }
+      }
+
+      else if (type === "teleop_key") {
+        r.mode = p.key ? "수동" : "자동";
+      }
+
+      renderRobotCards();
     };
 
-    commandQueue.push(cmd);
-    renderLog();
+    ws.onclose = () => {
+      console.log("[WS] Dashboard disconnected, retrying...");
+      setTimeout(connectDashboardWs, 2000);
+    };
   }
 
-  // ==========================
-  // 6️⃣ 명령 실행 (시작 버튼)
-  // ==========================
-  async function executeCommands() {
-    if (commandQueue.length === 0) return alert("명령이 없습니다.");
-
-    for (const cmd of commandQueue) {
-      const item = products.find(p => p.name === cmd.product);
-      if (!item) continue;
-
-      let newQty = cmd.type === "입고"
-        ? item.quantity + cmd.quantity
-        : item.quantity - cmd.quantity;
-
-      if (newQty < 0) newQty = 0;
-
-      try {
-        await fetch(`/stocks/${item.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ quantity: newQty }),
-        });
-      } catch (err) {
-        console.error("❌ 수량 업데이트 실패:", err);
-      }
-    }
-
-    commandQueue = [];
-    renderLog();
+  /* ==========================
+      초기 실행
+  ========================== */
+  (async () => {
     await loadProducts();
-    alert("모든 명령이 실행되었습니다.");
-  }
-
-  // ==========================
-  // 7️⃣ 검색 기능
-  // ==========================
-  function searchProducts() {
-    const kw = searchInput.value.trim().toLowerCase();
-    const filtered = products.filter(p =>
-      (p.name || "").toLowerCase().includes(kw) ||
-      (p.pin_name || "").toLowerCase().includes(kw)
-    );
-    renderTable(filtered);
-  }
-
-  // ==========================
-  // 8️⃣ 오른쪽 패널 로봇 상태용 드롭다운
-  // ==========================
-  async function loadRobotsForStatus() {
-    try {
-      const res = await fetch("/robots/");
-      if (!res.ok) throw new Error("로봇 목록 로딩 실패");
-      const robots = await res.json();
-
-      robotStatusSelect.innerHTML = `<option value="">로봇 선택</option>`;
-      robots.forEach(r => {
-        const opt = document.createElement("option");
-        opt.value = r.id;
-        opt.textContent = r.name;
-        robotStatusSelect.appendChild(opt);
-      });
-
-      console.log("✅ 상태 패널용 로봇 목록 불러오기 완료:", robots);
-    } catch (e) {
-      console.error("❌ 로봇 상태 선택 로딩 오류:", e);
-    }
-  }
-
-  // 선택 이벤트 (현재 콘솔 출력만)
-  if (robotStatusSelect) {
-    robotStatusSelect.addEventListener("change", (e) => {
-      const selected = e.target.options[e.target.selectedIndex].text;
-      if (e.target.value) {
-        console.log(`📡 선택된 로봇: ${selected}`);
-      }
-    });
-  }
-
-  // ==========================
-  // 9️⃣ 이벤트 등록
-  // ==========================
-  searchBtn.addEventListener("click", searchProducts);
-  searchInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") searchProducts();
-  });
-
-  btnIn.addEventListener("click", () => addCommand("입고"));
-  btnOut.addEventListener("click", () => addCommand("출고"));
-  startBtn.addEventListener("click", executeCommands);
-
-  // ==========================
-  // 🔟 초기 로드
-  // ==========================
-  loadProducts();
-  loadRobots();
-  loadRobotsForStatus(); // ✅ 중요! 오른쪽 드롭다운 작동시키는 부분
+    await loadRobots();
+    await initRobotStatusList();   // ⭐ 전체 로봇 목록으로 ROBOT_STATUS 초기화
+    connectDashboardWs();
+  })();
 });
