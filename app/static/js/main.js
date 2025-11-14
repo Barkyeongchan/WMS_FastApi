@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log("✅ WMS Dashboard JS Loaded");
 
   /* ============================================================================
-      0) 상품 / 로봇 기본 요소
+      0) 기본 요소 캐싱
   ============================================================================ */
   const searchInput = document.getElementById("search_input");
   const searchBtn   = document.getElementById("search_btn");
@@ -17,42 +17,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let products = [];
   let selectedItem = null;
-  let commandQueue = [];
   let ROBOT_STATUS = {};
+  let lastRobotPose = { x: null, y: null, theta: 0 };
+  let hasInitialPose = false;
+  let activeRobotName = null;
+
   let mapInfo = {
     image: null,
-    resolution: 0.05,  // 기본값, /map/info에서 덮어씀
+    resolution: 0.05,
     origin: [0, 0]
   };
 
   /* ============================================================================
-      1) 로봇 목록 초기화
+      1) 로봇 상태 초기화
   ============================================================================ */
   async function initRobotStatusList() {
     const res = await fetch("/robots/");
     const robots = await res.json();
 
     robots.forEach(r => {
-      if (!ROBOT_STATUS[r.name]) {
-        ROBOT_STATUS[r.name] = {
-          name: r.name,
-          connected: false,
-          battery: 0,
-          speed: 0,
-          x: 0,
-          y: 0,
-          theta: 0,
-          mode: "미연결",
-        };
-      }
+      ROBOT_STATUS[r.name] = {
+        name: r.name,
+        connected: false,
+        battery: 0,
+        speed: 0,
+        x: 0,
+        y: 0,
+        theta: 0,
+        mode: "미연결",
+      };
     });
 
     renderRobotCards();
-    console.log("🔄 초기 로봇 목록 생성 완료:", ROBOT_STATUS);
   }
 
   /* ============================================================================
-      2) 상품 목록 & 로봇 선택 목록
+      2) 상품 / 로봇 로딩
   ============================================================================ */
   async function loadProducts() {
     const res = await fetch("/stocks/");
@@ -79,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
       emptyHint.style.display = "block";
       return;
     }
+
     emptyHint.style.display = "none";
 
     data.forEach(item => {
@@ -100,27 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ============================================================================
-      3) (선택) 명령 로그 렌더링 – 필요하면 그대로 활용
-  ============================================================================ */
-  function renderLog() {
-    logArea.innerHTML = "";
-    if (commandQueue.length === 0) {
-      logArea.innerHTML = `<p class="log_hint">※ 등록된 명령이 여기에 표시됩니다.</p>`;
-      return;
-    }
-
-    commandQueue.forEach(cmd => {
-      const p = document.createElement("p");
-      p.classList.add("log_entry", cmd.type === "입고" ? "in" : "out");
-      p.textContent = `[${cmd.type}] ${cmd.product} x${cmd.quantity} (${cmd.robotName})`;
-      logArea.appendChild(p);
-    });
-
-    logArea.scrollTop = logArea.scrollHeight;
-  }
-
-  /* ============================================================================
-      4) 로봇 상태 카드 렌더링
+      3) 로봇 카드 렌더링
   ============================================================================ */
   function renderRobotCards() {
     const container = document.getElementById("robot_status_list");
@@ -137,11 +118,11 @@ document.addEventListener('DOMContentLoaded', () => {
       card.className = "robot_card";
       if (!robot.connected) card.classList.add("offline");
 
-      const speed  = robot.speed ?? 0;
-      const posX   = robot.x ?? 0;
-      const posY   = robot.y ?? 0;
-      const batt   = robot.battery ?? 0;
-      const mode   = robot.mode || (robot.connected ? "자동" : "미연결");
+      const speed = robot.speed ?? 0;
+      const posX  = robot.x ?? 0;
+      const posY  = robot.y ?? 0;
+      const batt  = robot.battery ?? 0;
+      const mode  = robot.mode || (robot.connected ? "자동" : "미연결");
 
       card.innerHTML = `
         <div class="robot_card_title">${robot.name}</div>
@@ -158,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ============================================================================
-      5) WebSocket – 기존 구조 유지
+      4) WebSocket 핸들러
   ============================================================================ */
   function connectDashboardWs() {
     const protocol = location.protocol === "https:" ? "wss" : "ws";
@@ -167,37 +148,62 @@ document.addEventListener('DOMContentLoaded', () => {
 
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
+      console.log("[WS] 수신:", msg);
+
       const p   = msg.payload || {};
       const name = p.robot_name;
       if (!name || !ROBOT_STATUS[name]) return;
-
       const r = ROBOT_STATUS[name];
 
+      activeRobotName = name;
+
+      /* ---- status ---- */
       if (msg.type === "status") {
         r.connected = p.connected;
         r.mode = p.connected ? "자동" : "미연결";
       }
+
+      /* ---- battery ---- */
       else if (msg.type === "battery") {
         r.battery = p.percentage;
       }
+
+      /* ---- odom (정지 상태에서도 들어옴) ---- */
       else if (msg.type === "odom") {
         r.speed = p.linear?.x || 0;
-        if (p.theta !== undefined) {
-          r.theta = p.theta;
+
+        // ⭐ 최초 좌표 자동 설정
+        if (!hasInitialPose && p.position) {
+          lastRobotPose.x = p.position.x;
+          lastRobotPose.y = p.position.y;
+          lastRobotPose.theta = p.theta || 0;
+
+          r.x = lastRobotPose.x;
+          r.y = lastRobotPose.y;
+          r.theta = lastRobotPose.theta;
+
+          hasInitialPose = true;
+          updateRobotMarker(r);
         }
+
+        if (p.theta !== undefined) r.theta = p.theta;
       }
+
+      /* ---- amcl_pose (정확한 위치) ---- */
       else if (msg.type === "amcl_pose") {
         if (typeof p.x === "number") r.x = p.x;
         if (typeof p.y === "number") r.y = p.y;
-        if (p.theta !== undefined) {
-          r.theta = p.theta;
-        }
+        if (p.theta !== undefined) r.theta = p.theta;
+
+        lastRobotPose = {
+          x: r.x,
+          y: r.y,
+          theta: r.theta
+        };
+
+        hasInitialPose = true;
         updateRobotMarker(r);
       }
-      else if (msg.type === "teleop_key") {
-        r.mode = p.key ? "수동" : "자동";
-      }
-
 
       renderRobotCards();
     };
@@ -209,97 +215,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ============================================================================
-      6) 지도 상태 – 방법 A (완전 수동 transform, Panzoom은 센서)
+      5) 지도 로딩
   ============================================================================ */
-
-  // 로컬스토리지 키 (버전 태그로 \a 사용)
-  const MAP_STATE_KEY = "WMS_MAP_STATE\\a";
-
-  // 지도 상태
-  let mapState = {
-    x: 0,
-    y: 0,
-    scale: 1,
-    angle: 0
-  };
-
-  let panzoomInstance = null;
-  let mapControlEnabled = false;
-
-  /* 🔹 상태 저장 */
-  function saveMapState() {
-    try {
-      localStorage.setItem(MAP_STATE_KEY, JSON.stringify(mapState));
-    } catch (e) {
-      console.warn("map state save failed:", e);
-    }
-  }
-
-  /* 🔹 상태 로드 */
-  function loadMapStateFromStorage() {
-    try {
-      const saved = localStorage.getItem(MAP_STATE_KEY);
-      if (!saved) return;
-      const parsed = JSON.parse(saved);
-
-      if (typeof parsed.x === "number") mapState.x = parsed.x;
-      if (typeof parsed.y === "number") mapState.y = parsed.y;
-      if (typeof parsed.scale === "number" && parsed.scale > 0) mapState.scale = parsed.scale;
-      if (typeof parsed.angle === "number") mapState.angle = parsed.angle;
-    } catch (e) {
-      console.warn("map state load failed:", e);
-    }
-  }
-
-  /* 🔹 실제 transform 적용 (유일한 transform) */
-  function applyMapTransform() {
-    const inner = document.getElementById("map_inner");
-    if (!inner) return;
-
-    inner.style.transform =
-      `translate(${mapState.x}px, ${mapState.y}px) ` +
-      `scale(${mapState.scale}) ` +
-      `rotate(${mapState.angle}deg)`;
-  }
-
-  /* 🔹 Panzoom 이벤트 → mapState에 반영 */
-  function setupPanzoom(inner) {
-    // 초기 상태 로드
-    loadMapStateFromStorage();
-
-    panzoomInstance = Panzoom(inner, {
-      maxScale: 5,
-      minScale: 0.4,
-      disablePan: true,
-      disableZoom: true,
-
-      // Panzoom이 계산한 x,y,scale을 우리가 직접 적용
-      setTransform: (elem, { x, y, scale }) => {
-        mapState.x = x;
-        mapState.y = y;
-        mapState.scale = scale;
-        saveMapState();
-        applyMapTransform();
-      },
-
-      // 저장된 상태로 시작
-      startX: mapState.x,
-      startY: mapState.y,
-      startScale: mapState.scale
-    });
-
-    // 최초 1회 transform (각도 포함)
-    applyMapTransform();
-
-    // 휠 줌은 우리가 직접 제어해서 OFF일 때는 아예 무시
-    const container = document.getElementById("map_container");
-    container.addEventListener("wheel", (evt) => {
-      if (!mapControlEnabled) return;
-      panzoomInstance.zoomWithWheel(evt);
-    });
-  }
-
-  /* 🔹 지도 로딩 */
   async function loadMap() {
     try {
       const res = await fetch("/map/info");
@@ -313,11 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
       img.src = info.image;
 
       img.onload = () => {
-        const inner = document.getElementById("map_inner");
-
-        setupPanzoom(inner);
-
-        applyMapTransform();
+        console.log("📌 지도 이미지 로드 완료:", img.naturalWidth, img.naturalHeight);
       };
 
     } catch (err) {
@@ -325,28 +238,49 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // ✅ ROS (m) 좌표 → 이미지 픽셀 좌표 변환
+  /* ============================================================================
+      6) ROS → Pixel 변환
+  ============================================================================ */
   function rosToPixel(x, y) {
     const img = document.getElementById("map_image");
-    if (!img || img.naturalWidth === 0) return { x: 0, y: 0 };
+    const container = document.getElementById("map_container");
 
-    // 1) origin, resolution 기반으로 맵 좌표 → 픽셀
+    if (!img.complete) return { x: 0, y: 0 };
+
+    const iw = img.naturalWidth;
+    const ih = img.naturalHeight;
+
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+
+    const scale = Math.max(cw / iw, ch / ih);
+
+    const drawnWidth = iw * scale;
+    const drawnHeight = ih * scale;
+
+    const offsetX = (cw - drawnWidth) / 2;
+    const offsetY = (ch - drawnHeight) / 2;
+
     const px = (x - mapInfo.origin[0]) / mapInfo.resolution;
     const py = (y - mapInfo.origin[1]) / mapInfo.resolution;
 
-    // 2) 이미지 Y축 뒤집기
-    const pyFlipped = img.naturalHeight - py;
+    const pyFlip = ih - py;
 
-    return { x: px, y: pyFlipped };
+    return {
+      x: px * scale + offsetX,
+      y: pyFlip * scale + offsetY
+    };
   }
 
-  // ✅ 로봇 마커 위치/회전 업데이트
+  /* ============================================================================
+      7) 로봇 마커 업데이트
+  ============================================================================ */
   function updateRobotMarker(robot) {
     const marker = document.getElementById("robot_marker");
     const img = document.getElementById("map_image");
-    if (!marker || !img || !img.complete) return;
 
-    // 좌표 없으면 숨김
+    if (!marker || !img.complete) return;
+
     if (robot.x == null || robot.y == null) {
       marker.style.display = "none";
       return;
@@ -354,87 +288,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
     marker.style.display = "block";
 
-    // ROS 좌표를 픽셀로 변환
     const p = rosToPixel(robot.x, robot.y);
 
-    // 중심 정렬 (아이콘 20x20 기준)
     marker.style.left = `${p.x - 10}px`;
     marker.style.top  = `${p.y - 10}px`;
 
-    // heading (theta, rad → deg)
     const theta = robot.theta || 0;
     const deg = theta * (180 / Math.PI);
-
     marker.style.transform = `rotate(${deg}deg)`;
   }
 
-
-
-
   /* ============================================================================
-      7) 지도 조작 버튼
+      8) 마커 유지 루프
   ============================================================================ */
-  const mapToggleBtn   = document.getElementById("map_toggle_btn");
-  const rotateLeftBtn  = document.getElementById("map_rotate_left");
-  const rotateRightBtn = document.getElementById("map_rotate_right");
+  setInterval(() => {
+    if (!activeRobotName) return;
+    const r = ROBOT_STATUS[activeRobotName];
+    if (!r) return;
 
-  mapToggleBtn.addEventListener("click", () => {
-    if (!panzoomInstance) return;
-
-    mapControlEnabled = !mapControlEnabled;
-
-    if (mapControlEnabled) {
-      mapToggleBtn.textContent = "🗺️ 조작 ON";
-      mapToggleBtn.classList.add("map_btn_on");
-
-      panzoomInstance.setOptions({
-        disablePan: false,
-        disableZoom: false
-      });
-
-    } else {
-      mapToggleBtn.textContent = "🗺️ 조작 OFF";
-      mapToggleBtn.classList.remove("map_btn_on");
-
-      panzoomInstance.setOptions({
-        disablePan: true,
-        disableZoom: true
-      });
-
-      // OFF 해도 상태는 유지 (단지 조작만 잠금)
-      saveMapState();
-      applyMapTransform();
+    if (lastRobotPose.x != null && lastRobotPose.y != null) {
+      r.x = lastRobotPose.x;
+      r.y = lastRobotPose.y;
+      r.theta = lastRobotPose.theta;
+      updateRobotMarker(r);
     }
-  });
-
-  rotateLeftBtn.addEventListener("click", () => {
-    if (!mapControlEnabled) {
-      alert("지도 조작을 켜세요!");
-      return;
-    }
-    mapState.angle -= 15;
-    saveMapState();
-    applyMapTransform();
-  });
-
-  rotateRightBtn.addEventListener("click", () => {
-    if (!mapControlEnabled) {
-      alert("지도 조작을 켜세요!");
-      return;
-    }
-    mapState.angle += 15;
-    saveMapState();
-    applyMapTransform();
-  });
+  }, 200);
 
   /* ============================================================================
-      8) 초기 실행
+      9) 초기 실행
   ============================================================================ */
   (async () => {
     await loadProducts();
     await loadRobots();
     await initRobotStatusList();
-    await loadMap();          // 🔹 지도 + Panzoom + 상태 복원
+    await loadMap();
     connectDashboardWs();
   })();
 });

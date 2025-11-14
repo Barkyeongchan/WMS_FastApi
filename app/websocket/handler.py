@@ -25,7 +25,7 @@ async def handle_message(ws, data: dict):
         return
 
     # ✅ 로컬 → 웹: 센서 / 토픽 데이터
-    if msg_type in ["odom", "battery", "camera", "diagnostics"]:
+    if msg_type in ["odom", "battery", "camera", "diagnostics", "amcl_pose", "nav"]:
         await broadcast_to_webs(json.dumps(data))
         return
 

@@ -1,48 +1,55 @@
 import yaml
 from fastapi import APIRouter
-from PIL import Image
+import imageio
 import os
 
 router = APIRouter()
 
 MAP_DIR = "app/static/map"
 
+
 def ensure_png_exists(pgm_filename: str) -> str:
     """
-    PGM 파일이 있으면 PNG 자동 생성하여 반환하는 함수.
+    PGM → PNG 변환 (imageio 사용하여 원본 이미지 크기 100% 유지)
     반환값 → PNG 파일 이름
     """
     pgm_path = os.path.join(MAP_DIR, pgm_filename)
     png_filename = pgm_filename.replace(".pgm", ".png")
     png_path = os.path.join(MAP_DIR, png_filename)
 
-    # PNG 이미 존재하면 변환 생략
+    # 이미 PNG가 있으면 변환 생략
     if os.path.exists(png_path):
         return png_filename
 
-    # PGM 이미지가 존재할 경우 → 자동 PNG 변환
+    # PGM이 존재하면 PNG 생성
     if os.path.exists(pgm_path):
         try:
-            img = Image.open(pgm_path)
-            img.save(png_path)
-            print(f"🟢 PGM → PNG 자동 변환 완료: {png_filename}")
+            img = imageio.imread(pgm_path)  # 원본 픽셀 크기 그대로 로드
+            imageio.imwrite(png_path, img)  # 그대로 PNG 저장
+            print(f"🟢 PGM → PNG 변환 완료: {png_filename}")
         except Exception as e:
-            print("❌ PNG 변환 실패:", e)
+            print(f"❌ PNG 변환 실패: {e}")
 
     return png_filename
 
 
 @router.get("/map/info")
 def get_map_info():
+    """
+    클라이언트에게 제공할 지도 정보
+    - PNG 이미지 경로
+    - resolution
+    - origin
+    """
     yaml_path = os.path.join(MAP_DIR, "wasd_map3.yaml")
 
     with open(yaml_path, "r") as f:
         data = yaml.safe_load(f)
 
-    pgm_file = data["image"]  # YAML에 작성된 PGM 파일명
+    pgm_file = data["image"]  # YAML에 지정된 PGM 파일명
     png_file = ensure_png_exists(pgm_file)
 
-    # 웹 클라이언트에게 항상 PNG 제공
+    # 항상 PNG 이미지 경로 제공
     return {
         "image": f"/static/map/{png_file}",
         "resolution": data["resolution"],
