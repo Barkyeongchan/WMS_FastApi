@@ -95,5 +95,3 @@ async def handle_message(ws: WebSocket, data: dict):
             ros_manager.ros_manager.send_cmd_vel(payload)
         except Exception as e:
             print("[WS] cmd_vel 처리 오류:", e)
-
-    # 추후 mode, goal 등 추가 타입도 여기서 처리 가능

@@ -43,10 +43,17 @@ class RosListener:
             data = process_ros_data(topic_name, msg, robot_name=self.robot_name)
             if not data:
                 return
+    
+            # ✅ 여기가 핵심 패치 — 모든 메시지에 robot_name 강제 삽입
+            if "payload" in data:
+                data["payload"]["robot_name"] = self.robot_name
+    
             ws_msg = build_message(data["type"], data["payload"])
             ws_manager.broadcast(ws_msg)
+    
         except Exception as e:
             print(f"[ROS] ⚠️ {topic_name} 처리 오류:", e)
+    
 
     def close(self):
         print("[ROS] Listener closed")
