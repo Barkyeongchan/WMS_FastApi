@@ -1,10 +1,14 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WASD_WMS</title>
   <link rel="stylesheet" href="/static/css/style.css" />
+
+  <!-- ⭐ Panzoom for Map Zoom/Drag -->
+  <script src="https://unpkg.com/@panzoom/panzoom/dist/panzoom.min.js"></script>
 </head>
 
 <body>
@@ -72,7 +76,7 @@
                   <button class="output_btn" id="btn_out">출고</button>
                 </div>
 
-                <!-- ✅ 명령 대기 로그 -->
+                <!-- 명령 대기 로그 -->
                 <div class="command_log">
                   <p class="queue_title">명령 대기 로그</p>
                   <div class="log_area" id="log_area">
@@ -80,16 +84,15 @@
                   </div>
                 </div>
 
-                <!-- ✅ 시작 버튼 (하단 고정) -->
+                <!-- 시작 버튼 -->
                 <div class="start_btn_container">
                   <button id="btn_start" class="start_btn">시작</button>
                 </div>
-
               </div>
             </div>
           </div>
 
-          <!-- ✅ 작업 내역 + 요약 현황 -->
+          <!-- 작업 내역 + 요약 현황 -->
           <div class="log_summary_container">
             <div class="log">
               <p class="log_t">작업 내역</p>
@@ -113,27 +116,36 @@
           <div class="right_panel_header">
             <p>지도 및 로봇 상태</p>
           </div>
-        
-          <div class="map_content">
-            <p>※ 매핑된 지도 표시 예정</p>
-          </div>
-        
-          <div class="robot_camera_section">
 
-            <!-- 로봇 상태 카드 리스트 (여러 대 가능) -->
-            <div class="robot_status">
-              <div id="robot_status_list" class="robot_list">
+          <div class="map_content" id="map_container">
+            <div id="map_wrapper" style="position: relative;">
+              <!-- ⭐ 회전 전용 래퍼 -->
+              <div id="map_inner" style="position: relative; transform-origin: center;">
+                <img id="map_image" src="" style="display: block;">
+                <canvas id="map_canvas" style="position:absolute; top:0; left:0;"></canvas>
               </div>
             </div>
+            <!-- ⭐ 지도 조작 UI -->
+            <div id="map_controls" class="map_controls">
+              <button id="map_toggle_btn">조작 OFF</button>
+              <button id="map_rotate_left">↺</button>
+              <button id="map_rotate_right">↻</button>
+            </div>
+          </div>
           
-            <!-- 카메라 -->
+          <div class="robot_camera_section">
+            <div class="robot_status">
+              <div id="robot_status_list" class="robot_list"></div>
+            </div>
+
             <div class="camera">
               <div class="camera_content">
                 <p>※ 실시간 영상 표시 예정</p>
               </div>
             </div>
           </div>
-        </div> 
+
+        </div>
       </div>
     </div>
   </main>

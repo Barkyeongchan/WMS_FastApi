@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 
 from app.routers.stock_router import router as stock_router
@@ -12,6 +13,7 @@ from app.routers.log_router import router as log_router
 from app.routers.category_router import router as category_router
 from app.routers.pin_router import router as pin_router
 from app.routers.page_router import router as page_router
+from app.routers.map_router import router as map_router
 
 from app.websocket.manager import register, unregister
 from app.core.database import Base, engine
@@ -48,7 +50,7 @@ app.include_router(robot_router)
 app.include_router(log_router)
 app.include_router(category_router)
 app.include_router(pin_router)
-
+app.include_router(map_router)
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
