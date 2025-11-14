@@ -1,20 +1,29 @@
 import time
-import json
+import math
 
+# -----------------------------
+# ✓ Quaternion → Yaw 변환 함수
+# -----------------------------
+def quaternion_to_yaw(q):
+    x = q.get('x', 0.0)
+    y = q.get('y', 0.0)
+    z = q.get('z', 0.0)
+    w = q.get('w', 0.0)
+
+    siny = 2.0 * (w * z + x * y)
+    cosy = 1.0 - 2.0 * (y * y + z * z)
+    return math.atan2(siny, cosy)
+
+
+# =========================================================
+#               MESSAGE BUILDER
+# =========================================================
 def build_message(topic_type: str, data: dict) -> dict:
-    """
-    ROS 토픽 데이터를 표준 WebSocket 메시지 구조로 변환
-    (실무형 통합 버전)
-    """
-
-    # ISO8601 타임스탬프
     timestamp = time.strftime("%Y-%m-%dT%H:%M:%S")
-
-    # robot_name이 없으면 기본값으로 unknown 설정
     robot_name = data.get("robot_name", "unknown")
 
     # -----------------------------
-    # ✅ 토픽별 후처리 / 정규화
+    # BATTERY
     # -----------------------------
     if topic_type == "battery":
         payload = {
@@ -26,25 +35,39 @@ def build_message(topic_type: str, data: dict) -> dict:
             "status": data.get("status", "Unknown"),
         }
 
+    # -----------------------------
+    # ODOM
+    # -----------------------------
     elif topic_type == "odom":
+        ori = data.get("orientation", {})
+        theta = quaternion_to_yaw(ori)
+
         payload = {
             "robot_name": robot_name,
             "timestamp": timestamp,
             "position": data.get("position", {}),
-            "orientation": data.get("orientation", {}),
+            "orientation": ori,
             "linear": data.get("linear", {}),
             "angular": data.get("angular", {}),
+            "theta": theta
         }
 
+    # -----------------------------
+    # AMCL POSE
+    # -----------------------------
     elif topic_type == "amcl_pose":
         payload = {
             "robot_name": robot_name,
             "timestamp": timestamp,
             "x": data.get("x"),
             "y": data.get("y"),
-            "orientation": data.get("orientation", {}),
+            "theta": data.get("theta"),      # ← 여기까지 포함됨
+            "orientation": data.get("orientation", {})
         }
 
+    # -----------------------------
+    # CMD_VEL
+    # -----------------------------
     elif topic_type == "cmd_vel":
         payload = {
             "robot_name": robot_name,
@@ -53,14 +76,21 @@ def build_message(topic_type: str, data: dict) -> dict:
             "angular_z": data.get("angular_z", 0.0),
         }
 
+    # -----------------------------
+    # BASE LINK
+    # -----------------------------
     elif topic_type == "base_link":
         payload = {
             "robot_name": robot_name,
             "timestamp": timestamp,
             "position": data.get("position", {}),
             "orientation": data.get("orientation", {}),
+            "theta": data.get("theta")
         }
 
+    # -----------------------------
+    # NAV PATH
+    # -----------------------------
     elif topic_type == "nav":
         payload = {
             "robot_name": robot_name,
@@ -68,6 +98,9 @@ def build_message(topic_type: str, data: dict) -> dict:
             "path_points": data.get("path_points", []),
         }
 
+    # -----------------------------
+    # TELEOP KEY
+    # -----------------------------
     elif topic_type == "teleop_key":
         payload = {
             "robot_name": robot_name,
@@ -75,8 +108,10 @@ def build_message(topic_type: str, data: dict) -> dict:
             "key": data.get("key", ""),
         }
 
-    # 적당한 위치(다른 elif 사이)에 추가
-    elif topic_type == "diagnostics":  # [ADD: SYSTEM STATUS]
+    # -----------------------------
+    # DIAGNOSTICS
+    # -----------------------------
+    elif topic_type == "diagnostics":
         payload = {
             "robot_name": robot_name,
             "timestamp": timestamp,
@@ -84,6 +119,9 @@ def build_message(topic_type: str, data: dict) -> dict:
             "color": data.get("color", "green"),
         }
 
+    # -----------------------------
+    # CAMERA
+    # -----------------------------
     elif topic_type == "camera":
         payload = {
             "robot_name": robot_name,
@@ -92,16 +130,12 @@ def build_message(topic_type: str, data: dict) -> dict:
         }
 
     else:
-        # 처리되지 않은 토픽 → 그대로 payload에 전달
         payload = {
             "robot_name": robot_name,
             "timestamp": timestamp,
             **data
         }
 
-    # -----------------------------
-    # ✅ 표준 메시지 구조로 반환
-    # -----------------------------
     return {
         "type": topic_type,
         "payload": payload

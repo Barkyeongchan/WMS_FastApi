@@ -19,6 +19,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectedItem = null;
   let commandQueue = [];
   let ROBOT_STATUS = {};
+  let mapInfo = {
+    image: null,
+    resolution: 0.05,  // 기본값, /map/info에서 덮어씀
+    origin: [0, 0]
+  };
 
   /* ============================================================================
       1) 로봇 목록 초기화
@@ -36,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
           speed: 0,
           x: 0,
           y: 0,
+          theta: 0,
           mode: "미연결",
         };
       }
@@ -142,6 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="robot_card_info">속도: ${speed.toFixed(2)} m/s</div>
         <div class="robot_card_info">위치: (${posX.toFixed(2)}, ${posY.toFixed(2)})</div>
         <div class="robot_card_info">상태: ${mode}</div>
+        <div class="robot_card_info">배터리</div>
         <div class="robot_card_bar">
           <div class="robot_card_bar_fill" style="width:${batt}%"></div>
         </div>
@@ -175,14 +182,22 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       else if (msg.type === "odom") {
         r.speed = p.linear?.x || 0;
-        if (p.position) {
-          r.x = p.position.x ?? r.x;
-          r.y = p.position.y ?? r.y;
+        if (p.theta !== undefined) {
+          r.theta = p.theta;
         }
+      }
+      else if (msg.type === "amcl_pose") {
+        if (typeof p.x === "number") r.x = p.x;
+        if (typeof p.y === "number") r.y = p.y;
+        if (p.theta !== undefined) {
+          r.theta = p.theta;
+        }
+        updateRobotMarker(r);
       }
       else if (msg.type === "teleop_key") {
         r.mode = p.key ? "수동" : "자동";
       }
+
 
       renderRobotCards();
     };
@@ -287,26 +302,74 @@ document.addEventListener('DOMContentLoaded', () => {
   /* 🔹 지도 로딩 */
   async function loadMap() {
     try {
-      const res  = await fetch("/map/info");
+      const res = await fetch("/map/info");
       const info = await res.json();
 
+      mapInfo.image = info.image;
+      mapInfo.resolution = info.resolution;
+      mapInfo.origin = info.origin;
+
       const img = document.getElementById("map_image");
-      const canvas = document.getElementById("map_canvas");
       img.src = info.image;
 
       img.onload = () => {
-        // 캔버스 크기만 맞춰두고, 나중에 로봇 위치 그릴 때 사용
-        canvas.width  = img.clientWidth;
-        canvas.height = img.clientHeight;
-
         const inner = document.getElementById("map_inner");
+
         setupPanzoom(inner);
+
+        applyMapTransform();
       };
 
     } catch (err) {
       console.error("지도 로딩 실패:", err);
     }
   }
+
+  // ✅ ROS (m) 좌표 → 이미지 픽셀 좌표 변환
+  function rosToPixel(x, y) {
+    const img = document.getElementById("map_image");
+    if (!img || img.naturalWidth === 0) return { x: 0, y: 0 };
+
+    // 1) origin, resolution 기반으로 맵 좌표 → 픽셀
+    const px = (x - mapInfo.origin[0]) / mapInfo.resolution;
+    const py = (y - mapInfo.origin[1]) / mapInfo.resolution;
+
+    // 2) 이미지 Y축 뒤집기
+    const pyFlipped = img.naturalHeight - py;
+
+    return { x: px, y: pyFlipped };
+  }
+
+  // ✅ 로봇 마커 위치/회전 업데이트
+  function updateRobotMarker(robot) {
+    const marker = document.getElementById("robot_marker");
+    const img = document.getElementById("map_image");
+    if (!marker || !img || !img.complete) return;
+
+    // 좌표 없으면 숨김
+    if (robot.x == null || robot.y == null) {
+      marker.style.display = "none";
+      return;
+    }
+
+    marker.style.display = "block";
+
+    // ROS 좌표를 픽셀로 변환
+    const p = rosToPixel(robot.x, robot.y);
+
+    // 중심 정렬 (아이콘 20x20 기준)
+    marker.style.left = `${p.x - 10}px`;
+    marker.style.top  = `${p.y - 10}px`;
+
+    // heading (theta, rad → deg)
+    const theta = robot.theta || 0;
+    const deg = theta * (180 / Math.PI);
+
+    marker.style.transform = `rotate(${deg}deg)`;
+  }
+
+
+
 
   /* ============================================================================
       7) 지도 조작 버튼

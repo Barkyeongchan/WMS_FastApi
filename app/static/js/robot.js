@@ -20,6 +20,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const STORAGE_KEY = "last_selected_robot";
 
+  let lastOdometrySpeed = 0;
+
   // ====== 모달 ======
   function openModal() {
     if (!modal) return;
@@ -232,38 +234,39 @@ document.addEventListener("DOMContentLoaded", () => {
         );
       }
 
-      // 위치/속도 (게이지 0.22 기준)
-      if (data.type === "odom") {
+      // 위치/속도 표시 (amcl_pose + odom 속도)
+      if (data.type === "amcl_pose") {
         try {
-          const pos = data.payload?.position || {};
-          const lin = data.payload?.linear || {};
-
+          const x = data.payload?.x;
+          const y = data.payload?.y;
+        
           const posRow = document.querySelector(
             ".status_row .value.position_value"
           );
           if (posRow) {
-            posRow.textContent = `(${pos.x?.toFixed(1) ?? "-"}, ${
-              pos.y?.toFixed(1) ?? "-"
-            })`;
+            posRow.textContent =
+              (x != null && y != null)
+                ? `(${x.toFixed(1)}, ${y.toFixed(1)})`
+                : "( - , - )";
           }
-
-          const linearX = lin.x ?? 0;
-          const speed = Math.abs(linearX);
-          const speedValue = `${speed.toFixed(2)} m/s`;
-
+        
+          // amcl에는 속도가 없기 때문에 odom에서 최신 속도만 따로 저장하도록 구성 필요
           const speedRow = document.querySelector(
             ".status_row.gauge_row .value.small"
           );
-          if (speedRow) speedRow.textContent = speedValue;
-
           const speedBar = document.querySelector(".bar_fill.speed");
-          if (speedBar) {
+        
+          if (speedRow && lastOdometrySpeed != null) {
+            const speed = Math.abs(lastOdometrySpeed);
+            speedRow.textContent = `${speed.toFixed(2)} m/s`;
+          
             const percent = Math.min(
               (speed / MAX_SPEED_DISPLAY) * 100,
               100
-            ); // 0.22 기준
+            );
+          
             speedBar.style.width = `${percent}%`;
-
+          
             if (percent < 40) {
               speedBar.style.background =
                 "linear-gradient(90deg, #3498db, #2980b9)";
@@ -276,9 +279,16 @@ document.addEventListener("DOMContentLoaded", () => {
             }
           }
         } catch (e) {
-          console.error("odom 처리 오류:", e);
+          console.error("amcl_pose 처리 오류:", e);
         }
       }
+
+      // odom → 속도만 별도로 저장
+      if (data.type === "odom") {
+        const lin = data.payload?.linear || {};
+        lastOdometrySpeed = lin.x ?? 0;
+      }
+
 
       // 시스템 상태
       if (data.type === "diagnostics") {

@@ -52,7 +52,7 @@ class ROSRobotConnection:
 
                     # ✅ 리스너 시작 (battery / odom / cmd_vel / diagnostics 등 구독)
                     self.listener = RosListener(self.ros, self.name)
-                    for topic in ["/battery_state", "/odom", "/cmd_vel", "/diagnostics"]:
+                    for topic in ["/battery_state", "/odom", "/cmd_vel", "/diagnostics", "/amcl_pose"]:
                         self.listener.subscribe(topic)
 
                     # ✅ 퍼블리셔 준비 (cmd_vel 퍼블리셔)

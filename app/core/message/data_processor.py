@@ -1,17 +1,39 @@
 import time
+import math
 
+# -----------------------------
+# ✓ Quaternion → Yaw 변환 함수
+# -----------------------------
+def quaternion_to_yaw(q):
+    """Quaternion → yaw(rad) 변환"""
+    x = q.get('x', 0.0)
+    y = q.get('y', 0.0)
+    z = q.get('z', 0.0)
+    w = q.get('w', 0.0)
+
+    siny = 2.0 * (w * z + x * y)
+    cosy = 1.0 - 2.0 * (y * y + z * z)
+    return math.atan2(siny, cosy)
+
+
+# =========================================================
+#                   ROS 데이터 처리기
+# =========================================================
 def process_ros_data(topic_name, msg, robot_name="unknown"):
-    """ROS 토픽 데이터 가공 (JSON 직렬화용 / 실무형 표준 버전)"""
+    """ROS 토픽 데이터 → WebSocket 전송용 JSON 변환"""
 
-    # 현재 시각 (ISO 형식)
     timestamp = time.strftime("%Y-%m-%dT%H:%M:%S")
 
     # =========================================================
-    # 🦾 1. Odometry (로봇 위치 / 속도)
+    # 🦾 1. ODOM (속도 + 상대 위치)
     # =========================================================
     if topic_name == '/odom':
         pose = msg['pose']['pose']
         twist = msg['twist']['twist']
+
+        ori = pose["orientation"]
+        theta = quaternion_to_yaw(ori)
+
         return {
             "type": "odom",
             "payload": {
@@ -22,17 +44,21 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
                     "y": round(pose['position']['y'], 3),
                     "z": round(pose['position']['z'], 3)
                 },
-                "orientation": pose['orientation'],
+                "orientation": ori,
+                "theta": theta,
                 "linear": twist['linear'],
                 "angular": twist['angular']
             }
         }
 
     # =========================================================
-    # 🧭 2. AMCL Pose (로봇 위치 추정)
+    # 🧭 2. AMCL POSE (전역 위치)
     # =========================================================
     elif topic_name == '/amcl_pose':
         pose = msg['pose']['pose']
+        ori = pose["orientation"]
+        theta = quaternion_to_yaw(ori)
+
         return {
             "type": "amcl_pose",
             "payload": {
@@ -40,12 +66,13 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
                 "timestamp": timestamp,
                 "x": round(pose['position']['x'], 3),
                 "y": round(pose['position']['y'], 3),
-                "orientation": pose['orientation']
+                "theta": theta,                 # ← 추가됨 (rad)
+                "orientation": ori
             }
         }
 
     # =========================================================
-    # 🔋 3. Battery State
+    # 🔋 BATTERY
     # =========================================================
     elif topic_name in ['/battery', '/battery_state']:
         raw_percentage = msg.get('percentage', 0.0)
@@ -75,7 +102,7 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
         }
 
     # =========================================================
-    # 🚗 4. cmd_vel (속도 명령)
+    # 🚗 CMD VEL
     # =========================================================
     elif topic_name == '/cmd_vel':
         linear = msg['linear']
@@ -91,22 +118,26 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
         }
 
     # =========================================================
-    # 🧍 5. Base Link (로봇 실제 위치)
+    # 🧍 BASE LINK
     # =========================================================
     elif topic_name == '/base_link':
         pose = msg['pose']
+        ori = pose['orientation']
+        theta = quaternion_to_yaw(ori)
+
         return {
             "type": "base_link",
             "payload": {
                 "robot_name": robot_name,
                 "timestamp": timestamp,
                 "position": pose['position'],
-                "orientation": pose['orientation']
+                "orientation": ori,
+                "theta": theta
             }
         }
 
     # =========================================================
-    # 🗺️ 6. 자율주행 경로 (/nav)
+    # 🗺 NAV PATH
     # =========================================================
     elif topic_name == '/nav':
         path = msg.get('poses', [])
@@ -119,12 +150,12 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
             "payload": {
                 "robot_name": robot_name,
                 "timestamp": timestamp,
-                "path_points": simplified[:50]  # 실시간 렌더링용 50개 제한
+                "path_points": simplified[:50]
             }
         }
 
     # =========================================================
-    # 🎮 7. Teleop Key (수동 조작)
+    # 🎮 TELEOP KEY
     # =========================================================
     elif topic_name == '/teleop_key':
         return {
@@ -137,24 +168,22 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
         }
 
     # =========================================================
-    # 🧩 8. Diagnostics (시스템 상태 - 간결 요약)
+    # 🧩 DIAGNOSTICS
     # =========================================================
     elif topic_name == '/diagnostics':
         status_list = msg.get('status', []) or []
-    
-        # 기본값
+
         overall_level = 0
         summary = "정상"
-    
+
         for s in status_list:
             lvl = int(s.get('level', 0))
             name = (s.get('name') or '').lower()
             message = (s.get('message') or '').lower()
-    
+
             if lvl > overall_level:
                 overall_level = lvl
-    
-            # level 2: 오류
+
             if lvl == 2:
                 if ("lidar" in name or "connect" in message or "lost" in message):
                     summary = "센서 끊김"
@@ -162,32 +191,30 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
                     summary = "시스템 오류"
                 overall_level = 2
                 break
-            
-            # level 1: 경고
+
             elif lvl == 1 and overall_level < 2:
-                if "temp" in message or "temperature" in message:
+                if "temp" in message:
                     summary = "온도 높음"
                 elif "battery" in name or "battery" in message:
                     summary = "배터리 약함"
                 else:
                     summary = "주의"
                 overall_level = 1
-    
+
         color = "green" if overall_level == 0 else ("orange" if overall_level == 1 else "red")
-    
+
         return {
             "type": "diagnostics",
             "payload": {
                 "robot_name": robot_name,
                 "timestamp": timestamp,
-                "status": summary,   # ✅ 한 줄 요약
-                "color": color       # ✅ 색상
+                "status": summary,
+                "color": color
             }
         }
 
-
     # =========================================================
-    # 📷 9. Camera Image (optional - base64 인코딩)
+    # 📷 CAMERA
     # =========================================================
     elif topic_name == '/camera':
         return {
@@ -200,7 +227,7 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
         }
 
     # =========================================================
-    # ⚙️ 기타 / 처리되지 않은 토픽
+    # ⚙ OTHER
     # =========================================================
     else:
         print(f"[WARN] 처리되지 않은 토픽: {topic_name}")
