@@ -2,87 +2,24 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log("✅ WMS Dashboard JS Loaded");
 
   /* ============================================================================
-      🔵 PIVOT (지도 중심점) – 네가 말한 좌표
+      🔵 PIVOT (지도 중심점)
+      → 스케일이 바뀌어도 이 좌표는 항상 고정
   ============================================================================ */
   const PIVOT_X = 1.42;
   const PIVOT_Y = 1.72;
 
-  /* ============================================================================  
-        🔥 지도 보정값 — 기본값(하드코딩) + localStorage 저장 지원  
+  /* ============================================================================
+      🔥 보정값 — 네가 맞춘 값 그대로 하드코딩 (localStorage 제거)
+      이제 값이 절대 변하지 않음 (재시작해도 고정)
   ============================================================================ */
-  let OFFSET_X = Number(localStorage.getItem("OFFSET_X") ?? -43);
-  let OFFSET_Y = Number(localStorage.getItem("OFFSET_Y") ?? -5);
-  let SCALE_X  = Number(localStorage.getItem("SCALE_X") ?? 0.55);
-  let SCALE_Y  = Number(localStorage.getItem("SCALE_Y") ?? 0.52);
+  const OFFSET_X = -43;
+  const OFFSET_Y = -5;
+  const SCALE_X  = 0.55;
+  const SCALE_Y  = 0.52;
 
   /* ============================================================================
-      🔵 Pivot 마커 생성 (파란 점)
+      기본 요소들
   ============================================================================ */
-  const pivotMarker = document.createElement("div");
-  pivotMarker.id = "pivot_marker";
-  pivotMarker.style.position = "absolute";
-  pivotMarker.style.width = "14px";
-  pivotMarker.style.height = "14px";
-  pivotMarker.style.background = "blue";
-  pivotMarker.style.border = "2px solid white";
-  pivotMarker.style.borderRadius = "50%";
-  pivotMarker.style.pointerEvents = "none";
-  pivotMarker.style.zIndex = "99999";
-  pivotMarker.style.display = "none";
-  document.body.appendChild(pivotMarker);
-
-  function updatePivotMarker() {
-    const p = rosToPixel(PIVOT_X, PIVOT_Y);
-    pivotMarker.style.left = `${p.x - 7}px`;
-    pivotMarker.style.top  = `${p.y - 7}px`;
-    pivotMarker.style.display = "block";
-  }
-
-  /* ============================================================================
-      🔥 보정값 조절 UI 패널
-  ============================================================================ */
-  const debugPanel = document.createElement("div");
-  debugPanel.style.position = "fixed";
-  debugPanel.style.right = "10px";
-  debugPanel.style.bottom = "10px";
-  debugPanel.style.background = "#ffffffdd";
-  debugPanel.style.padding = "10px";
-  debugPanel.style.borderRadius = "8px";
-  debugPanel.style.zIndex = "9999";
-  debugPanel.style.fontSize = "12px";
-  debugPanel.style.boxShadow = "0 0 8px rgba(0,0,0,0.2)";
-  debugPanel.innerHTML = `
-      <b>🧭 Map Debug Panel</b><br>
-      OFFSET_X: <input id="dbg_offx" type="number" step="1" style="width:70px"><br>
-      OFFSET_Y: <input id="dbg_offy" type="number" step="1" style="width:70px"><br>
-      SCALE_X : <input id="dbg_sx" type="number" step="0.01" style="width:70px"><br>
-      SCALE_Y : <input id="dbg_sy" type="number" step="0.01" style="width:70px"><br>
-      <button id="dbg_apply">적용</button>
-  `;
-  document.body.appendChild(debugPanel);
-
-  document.getElementById("dbg_offx").value = OFFSET_X;
-  document.getElementById("dbg_offy").value = OFFSET_Y;
-  document.getElementById("dbg_sx").value   = SCALE_X;
-  document.getElementById("dbg_sy").value   = SCALE_Y;
-
-  document.getElementById("dbg_apply").onclick = () => {
-    OFFSET_X = Number(document.getElementById("dbg_offx").value);
-    OFFSET_Y = Number(document.getElementById("dbg_offy").value);
-    SCALE_X  = Number(document.getElementById("dbg_sx").value);
-    SCALE_Y  = Number(document.getElementById("dbg_sy").value);
-
-    localStorage.setItem("OFFSET_X", OFFSET_X);
-    localStorage.setItem("OFFSET_Y", OFFSET_Y);
-    localStorage.setItem("SCALE_X", SCALE_X);
-    localStorage.setItem("SCALE_Y", SCALE_Y);
-
-    console.log("🔄 보정값 적용!", {OFFSET_X, OFFSET_Y, SCALE_X, SCALE_Y});
-
-    updatePivotMarker();
-  };
-
-  /* ============================================================================ */
   const robotSelect = document.getElementById("robot_select");
   const resultBody  = document.getElementById("result_body");
   const emptyHint   = document.getElementById("empty_hint");
@@ -198,9 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ============================================================================
-      4) WebSocket 핸들러
-      ✔ 위치는 AMCL만 사용
-      🚫 ODOM으로 좌표 업데이트 절대 금지
+      WebSocket – 위치 업데이트는 AMCL만
   ============================================================================ */
   function connectDashboardWs() {
     const protocol = location.protocol === "https:" ? "wss" : "ws";
@@ -263,7 +198,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       img.onload = () => {
         console.log("📌 지도 이미지 로드:", img.naturalWidth, img.naturalHeight);
-        updatePivotMarker();
       };
 
     } catch (err) {
@@ -272,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ============================================================================
-      🔥 pivot 중심 ROS → Pixel 변환
+      ROS → Pixel 변환 ( pivot 중심 + scale 보정 고정 )
   ============================================================================ */
   function rosToPixel(x, y) {
     const img = document.getElementById("map_image");
@@ -287,40 +221,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const scaleBase = Math.max(cw / iw, ch / ih);
 
-    // pivot 이미지 좌표
+    // pivot 이미지 px
     const pivot_px = (PIVOT_X - mapInfo.origin[0]) / mapInfo.resolution;
     const pivot_py = (PIVOT_Y - mapInfo.origin[1]) / mapInfo.resolution;
     const pivot_pyFlip = ih - pivot_py;
 
-    const pivot_screen_x = pivot_px * scaleBase;
-    const pivot_screen_y = pivot_pyFlip * scaleBase;
+    const offsetX0 = (cw - iw * scaleBase) / 2;
+    const offsetY0 = (ch - ih * scaleBase) / 2;
 
-    const offsetX = (cw - iw * scaleBase) / 2;
-    const offsetY = (ch - ih * scaleBase) / 2;
+    const pivot_global_x = pivot_px * scaleBase + offsetX0;
+    const pivot_global_y = pivot_pyFlip * scaleBase + offsetY0;
 
-    const pivot_global_x = pivot_screen_x + offsetX;
-    const pivot_global_y = pivot_screen_y + offsetY;
-
-    // 현재 점 → pivot 기준 상대 좌표
+    // 현재 점
     const px = (x - mapInfo.origin[0]) / mapInfo.resolution;
     const py = (y - mapInfo.origin[1]) / mapInfo.resolution;
     const pyFlip = ih - py;
 
-    const screen_x =
-      pivot_global_x + (px - pivot_px) * scaleBase * SCALE_X + OFFSET_X;
-
-    const screen_y =
-      pivot_global_y + (pyFlip - pivot_pyFlip) * scaleBase * SCALE_Y + OFFSET_Y;
-
-    return { x: screen_x, y: screen_y };
+    return {
+      x: pivot_global_x + (px - pivot_px) * scaleBase * SCALE_X + OFFSET_X,
+      y: pivot_global_y + (pyFlip - pivot_pyFlip) * scaleBase * SCALE_Y + OFFSET_Y
+    };
   }
 
   /* ============================================================================ */
   function updateRobotMarker(robot) {
     const marker = document.getElementById("robot_marker");
-    const img = document.getElementById("map_image");
-
-    if (!marker || !img.complete) return;
+    if (!marker) return;
 
     const p = rosToPixel(robot.x, robot.y);
 
@@ -330,17 +256,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const deg = (robot.theta || 0) * (180 / Math.PI);
     marker.style.transform = `rotate(${deg}deg)`;
-
-    updatePivotMarker();
   }
 
   /* ============================================================================ */
   setInterval(() => {
     if (!activeRobotName) return;
     const r = ROBOT_STATUS[activeRobotName];
-    if (!r) return;
-
-    if (lastRobotPose.x != null && lastRobotPose.y != null) {
+    if (lastRobotPose.x != null) {
       r.x = lastRobotPose.x;
       r.y = lastRobotPose.y;
       r.theta = lastRobotPose.theta;
