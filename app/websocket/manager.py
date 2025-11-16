@@ -2,96 +2,140 @@
 import asyncio
 from fastapi import WebSocket
 
+from app.core.database import SessionLocal
+from app.models.stock_model import Stock
+from app.models.pin_model import Pin
+
 _active_clients = []
 
 
+# ===========================
+#  클라이언트 등록
+# ===========================
 async def register(ws: WebSocket):
-    """클라이언트 등록"""
     _active_clients.append(ws)
-    print(f"[WS] 클라이언트 연결됨 (total={len(_active_clients)}) ✅")
+    print(f"[WS] 클라이언트 연결됨 (total={len(_active_clients)})")
 
-    # ✅ 지연 import로 순환참조 방지
+    # 🔥 활성 로봇 상태 자동 송신
     try:
-        from app.core.ros import ros_manager  # ← import를 함수 안으로 이동
-        if ros_manager and ros_manager.ros_manager.active_robot:
-            name = ros_manager.ros_manager.active_robot
-            client = ros_manager.ros_manager.clients.get(name)
+        from app.core.ros import ros_manager
+
+        active = ros_manager.ros_manager.active_robot
+        if active:
+            client = ros_manager.ros_manager.clients.get(active)
             if client and client.connected:
                 await ws.send_json({
                     "type": "status",
                     "payload": {
-                        "robot_name": name,
+                        "robot_name": active,
                         "ip": client.ip,
                         "connected": True,
                     },
                 })
-                print(f"[WS] 초기 상태 전송 → {name} ({client.ip}) connected=True")
+                print(f"[WS] 활성 로봇 상태 재전송 → {active}")
     except Exception as e:
-        print("[WS 초기 상태 전송 실패]", e)
+        print("[WS] 활성 상태 전송 실패:", e)
 
 
+# ===========================
+#  해제
+# ===========================
 async def unregister(ws: WebSocket):
-    """클라이언트 해제"""
     if ws in _active_clients:
         _active_clients.remove(ws)
     print(f"[WS] 클라이언트 해제됨 (total={len(_active_clients)})")
 
 
+# ===========================
+#  Broadcast
+# ===========================
 async def broadcast_json(data: dict):
-    """비동기 broadcast"""
     for ws in list(_active_clients):
         try:
             await ws.send_json(data)
-        except Exception:
+        except:
             await unregister(ws)
 
 
 class WSManager:
-    """스레드와 비동기 양쪽에서 broadcast 가능"""
     def __init__(self):
         self.loop = asyncio.get_event_loop()
 
-    def broadcast(self, msg: dict):
-        """외부 스레드에서도 안전하게 broadcast"""
+    def broadcast(self, data: dict):
         try:
-            asyncio.run_coroutine_threadsafe(broadcast_json(msg), self.loop)
+            asyncio.run_coroutine_threadsafe(broadcast_json(data), self.loop)
         except RuntimeError:
             loop = asyncio.get_event_loop()
-            asyncio.run_coroutine_threadsafe(broadcast_json(msg), loop)
+            asyncio.run_coroutine_threadsafe(broadcast_json(data), loop)
 
 
 ws_manager = WSManager()
 
 
-# ================================
-# ✅ 클라이언트 → 서버 메시지 처리
-# ================================
+# ===========================
+#  Web ↔ Server 메시지 처리 (핵심)
+# ===========================
 async def handle_message(ws: WebSocket, data: dict):
-    """
-    /ws 엔드포인트에서 받은 메시지를 라우팅하는 헬퍼.
 
-    사용 예시 (connection.py 같은 곳에서):
-
-        data = await websocket.receive_json()
-        await manager.handle_message(websocket, data)
-    """
     msg_type = data.get("type")
     if not msg_type:
         return
 
-    # ping 은 무시
-    if msg_type == "ping":
+    # ping / init
+    if msg_type in ["ping", "init_request"]:
         return
 
-    if msg_type == "init_request":
-        # 필요하면 초기 동기화 로직 추가
-        return
-
+    # =================================
+    #  cmd_vel → ROS
+    # =================================
     if msg_type == "cmd_vel":
-        # ROS 쪽으로 속도 명령 전달
         try:
             from app.core.ros import ros_manager
             payload = data.get("payload") or {}
             ros_manager.ros_manager.send_cmd_vel(payload)
         except Exception as e:
             print("[WS] cmd_vel 처리 오류:", e)
+        return
+
+    # =================================
+    #  입고 / 출고 요청
+    # =================================
+    if msg_type == "request_stock_move":
+        try:
+            from app.core.ros import ros_manager
+
+            payload = data.get("payload") or {}
+            stock_id = payload.get("stock_id")
+            amount   = payload.get("amount")
+            mode     = payload.get("mode")   # INBOUND / OUTBOUND
+
+            print(f"[WS] 📦 재고 이동 요청 → stock_id={stock_id}, mode={mode}")
+
+            db = SessionLocal()
+            try:
+                stock = db.query(Stock).filter(Stock.id == stock_id).first()
+                if not stock:
+                    print("[WS] ❌ stock_id 없음")
+                    return
+
+                pin = db.query(Pin).filter(Pin.id == stock.pin_id).first()
+                if not pin or not pin.coords:
+                    print("[WS] ❌ pin 좌표 없음")
+                    return
+
+                x, y = [c.strip() for c in pin.coords.split(",")]
+
+                command = f"{mode}:{stock.name}:{x}:{y}:{amount}"
+
+                # 🔥 로봇으로 퍼블리시
+                ros_manager.ros_manager.send_ui_command(command)
+
+                print(f"[WS] → ROS UI 명령 전송: {command}")
+
+            finally:
+                db.close()
+
+        except Exception as e:
+            print("[WS] request_stock_move 오류:", e)
+
+        return

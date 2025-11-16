@@ -10,13 +10,17 @@ async def show_index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @router.get("/stock", response_class=HTMLResponse)
-async def show_stocks(request: Request):
+async def show_stock(request: Request):
     return templates.TemplateResponse("stock.html", {"request": request})
 
 @router.get("/robot", response_class=HTMLResponse)
-async def show_stocks(request: Request):
+async def show_robot(request: Request):
     return templates.TemplateResponse("robot.html", {"request": request})
 
 @router.get("/log", response_class=HTMLResponse)
-async def show_stocks(request: Request):
+async def show_log(request: Request):
     return templates.TemplateResponse("log.html", {"request": request})
+
+@router.get("/app", response_class=HTMLResponse)
+async def show_app(request: Request):
+    return templates.TemplateResponse("app.html", {"request": request})

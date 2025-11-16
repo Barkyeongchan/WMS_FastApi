@@ -7,12 +7,14 @@ from app.websocket.manager import ws_manager
 from app.core.ros.listener import RosListener
 from app.core.ros.publisher import RosPublisher
 
-# 🔧 터틀봇3 Burger 기준 자동 모드 속도 정책 (m/s)
 AUTO_SPEED = {
     1: 0.10,
     2: 0.15,
-    3: 0.22,  # TB3 Burger 공식 최대속도 근처
+    3: 0.22,
 }
+
+# 🔥 ROS2 표준 메시지 타입 통일
+UI_CMD_TYPE = "std_msgs/String"
 
 
 class ROSRobotConnection:
@@ -28,11 +30,14 @@ class ROSRobotConnection:
         self.publisher: RosPublisher | None = None
         self.connected: bool = False
 
-        self.auto_speed_level: int = 1  # ✅ 자동 모드 기어 (1~3)
+        self.auto_speed_level: int = 1
 
         self._stop_flag = False
         self._monitor_thread: threading.Thread | None = None
         self._last_broadcast = 0  # ✅ 최근 broadcast 시각
+
+        # ✅ UI 명령용 토픽 핸들
+        self.ui_topic: roslibpy.Topic | None = None
 
     # ==========================================
     #  연결 / 모니터링
@@ -52,11 +57,24 @@ class ROSRobotConnection:
 
                     # ✅ 리스너 시작 (battery / odom / cmd_vel / diagnostics 등 구독)
                     self.listener = RosListener(self.ros, self.name)
-                    for topic in ["/battery_state", "/odom", "/cmd_vel", "/diagnostics", "/amcl_pose", "/nav"]:
+                    for topic in ["/battery_state", "/odom", "/cmd_vel",
+                                  "/diagnostics", "/amcl_pose", "/nav"]:
                         self.listener.subscribe(topic)
 
                     # ✅ 퍼블리셔 준비 (cmd_vel 퍼블리셔)
                     self.publisher = RosPublisher(self.ros)
+
+                    # ✅ UI 명령용 토픽 준비 (/wasd_ui_command)
+                    self.ui_topic = roslibpy.Topic(
+                        self.ros,
+                        "/wasd_ui_command",
+                        UI_CMD_TYPE
+                    )
+                    try:
+                        self.ui_topic.advertise()
+                        print(f"[ROS] Advertise → /wasd_ui_command ({UI_CMD_TYPE})")
+                    except Exception as e:
+                        print("[ROS] ⚠️ /wasd_ui_command advertise 실패:", e)
 
                     # 상태 감시 스레드 시작
                     self._stop_flag = False
@@ -66,6 +84,7 @@ class ROSRobotConnection:
                     )
                     self._monitor_thread.start()
 
+                    # 🔥 여기서 에러 나던 부분 → 메서드 복구 완료
                     self._broadcast_status(True)
                     return True
                 time.sleep(0.3)
@@ -96,36 +115,11 @@ class ROSRobotConnection:
                 prev = self.connected
             time.sleep(0.5)
 
-    def disconnect(self):
-        """rosbridge 연결 해제"""
-        try:
-            self._stop_flag = True
-
-            # 리스너 해제
-            if self.listener:
-                self.listener.close()
-                self.listener = None
-
-            # 퍼블리셔 해제
-            if self.publisher:
-                self.publisher.close()
-                self.publisher = None
-
-            # ROS 세션 종료
-            if self.ros and self.ros.is_connected:
-                self.ros.close()
-
-            self.ros = None
-            self.connected = False
-            print(f"[ROS] 🔴 {self.name} 연결 해제 완료")
-        except Exception as e:
-            print(f"[ROS] ⚠️ 연결 해제 오류: {e}")
-
-        self._broadcast_status(False)
-
+    # ✅ 내가 빠뜨렸던 메서드 — 원래 네 코드 그대로 복구
     def _broadcast_status(self, connected: bool):
         """웹소켓으로 연결 상태 전달"""
         now = time.time()
+        # 너무 자주 안 쏘게 쿨다운
         if now - self._last_broadcast < 3:
             return
         self._last_broadcast = now
@@ -140,34 +134,96 @@ class ROSRobotConnection:
         }
         ws_manager.broadcast(msg)
 
+    def disconnect(self):
+        """rosbridge 연결 해제"""
+        try:
+            self._stop_flag = True
+
+            if self.listener:
+                self.listener.close()
+                self.listener = None
+
+            if self.publisher:
+                self.publisher.close()
+                self.publisher = None
+
+            if self.ui_topic:
+                try:
+                    self.ui_topic.unadvertise()
+                except Exception:
+                    pass
+                self.ui_topic = None
+
+            if self.ros and self.ros.is_connected:
+                self.ros.close()
+
+            self.ros = None
+            self.connected = False
+            print(f"[ROS] 🔴 {self.name} 연결 해제 완료")
+        except Exception as e:
+            print(f"[ROS] ⚠️ 연결 해제 오류: {e}")
+
+        self._broadcast_status(False)
+
     # ==========================================
     # ✅ /cmd_vel 명령 퍼블리시 (수동 제어)
     # ==========================================
     def send_cmd_vel(self, cmd: dict):
-        """
-        cmd 구조는 robot.js 의 payload와 동일:
-        {
-          "linear": {...},
-          "angular": {...},
-          "gear": 1~3
-        }
-        """
         if not self.publisher:
             print(f"[ROS] cmd_vel 무시 ({self.name}): 퍼블리셔 없음")
             return
         self.publisher.publish_command(cmd)
 
     # ==========================================
+    # ✅ UI 명령 퍼블리시 (/wasd_ui_command)
+    # ==========================================
+    def send_ui_command(self, command: str):
+        """입고/출고/WAIT 등 UI 명령을 ROS 토픽으로 퍼블리시"""
+
+        print(f"[DEBUG] send_ui_command() 호출됨 → {command}")
+
+        # 연결 체크
+        if not self.ros or not self.ros.is_connected:
+            print(f"[ROS] UI 명령 무시 ({self.name}): ros 연결 없음")
+            return
+
+        # 토픽 준비 (필요 시 재생성)
+        try:
+            if not self.ui_topic:
+                self.ui_topic = roslibpy.Topic(
+                    self.ros,
+                    "/wasd_ui_command",
+                    UI_CMD_TYPE,
+                )
+                self.ui_topic.advertise()
+                print(f"[ROS] 재-advertise → /wasd_ui_command ({UI_CMD_TYPE})")
+
+            # publish 전 로그
+            print(f"[DEBUG] publish 직전: command={command}")
+
+            # 메시지 생성
+            msg = roslibpy.Message({"data": command})
+
+            # 실제 퍼블리시
+            self.ui_topic.publish(msg)
+
+            # 성공 로그
+            print(f"[ROS] 📤 /wasd_ui_command → {command}")
+
+        except Exception as e:
+            print("\n🔥🔥🔥 FATAL ERROR IN UI COMMAND 🔥🔥🔥")
+            print(f"Exception type: {type(e).__name__}")
+            print(f"Exception message: {e}")
+            import traceback
+            traceback.print_exc()
+            print("🔥🔥🔥 END OF TRACEBACK 🔥🔥🔥\n")
+
+
+
+    # ==========================================
     # ✅ 자동 모드 속도 레벨 설정 (Nav2 연동용)
     # ==========================================
     def set_nav2_speed(self, gear: int):
-        """
-        지금은 더미 환경이므로 Nav2 서비스 호출은 하지 않고,
-        단순히 '현재 자동 모드 기어'를 저장하고 로그만 남긴다.
-
-        나중에 실제 터틀봇3 + Nav2 연결 시 이 함수 안에
-        /controller_server/set_parameters 서비스 호출 로직을 추가하면 됨.
-        """
         if gear not in AUTO_SPEED:
             print(f"[NAV2] 잘못된 gear={gear}, 기본값 1단으로 처리")
             gear = 1
@@ -179,14 +235,6 @@ class ROSRobotConnection:
             f"[NAV2] (더미) 자동 모드 속도 레벨 설정 → "
             f"{self.name}: gear={gear}, max_vel_x={max_v} m/s"
         )
-        # TODO: 실제 Nav2 사용 시 예시
-        # service = roslibpy.Service(
-        #     self.ros,
-        #     '/controller_server/set_parameters',
-        #     'rcl_interfaces/srv/SetParameters'
-        # )
-        # req = { ... }
-        # service.call(req)
 
 
 class ROSConnectionManager:
@@ -196,12 +244,7 @@ class ROSConnectionManager:
         self.active_robot: str | None = None
         self.clients: dict[str, ROSRobotConnection] = {}
 
-    # ---------------------------
-    # 로봇 연결 / 해제 / 상태
-    # ---------------------------
     def connect_robot(self, name: str, ip: str):
-        """로봇 연결"""
-        # 기존 활성 로봇 있으면 먼저 끊기
         if self.active_robot and self.active_robot in self.clients:
             self.clients[self.active_robot].disconnect()
 
@@ -215,7 +258,6 @@ class ROSConnectionManager:
             print(f"[ROS] ❌ {name} 연결 실패")
 
     def disconnect_robot(self, name: str):
-        """로봇 연결 해제"""
         if name in self.clients:
             self.clients[name].disconnect()
             del self.clients[name]
@@ -225,45 +267,30 @@ class ROSConnectionManager:
             self.active_robot = None
 
     def get_status(self, name: str):
-        """현재 로봇 상태 반환"""
         if name not in self.clients:
             return {"connected": False, "ip": None}
         c = self.clients[name]
         return {"connected": c.connected, "ip": c.ip}
 
-    # ---------------------------
-    # ✅ 활성 로봇에 대한 cmd_vel 전송
-    # ---------------------------
     def send_cmd_vel(self, payload: dict):
-        """
-        handler.py 에서 호출.
-        payload 구조는 robot.js 의 payload 와 동일:
-        {
-          "linear": { "x": ..., "y": ..., "z": ... },
-          "angular": { "x": ..., "y": ..., "z": ... },
-          "gear": 1~3
-        }
-        """
         if not self.active_robot or self.active_robot not in self.clients:
             print("[ROS] cmd_vel 무시: 활성 로봇 없음")
             return
-
         client = self.clients[self.active_robot]
         client.send_cmd_vel(payload)
 
-    # ---------------------------
-    # ✅ 활성 로봇에 대한 자동 모드 속도 레벨 변경
-    # ---------------------------
+    def send_ui_command(self, command: str):
+        print(f"[DEBUG] send_ui_command() 호출됨 → {command}")
+        if not self.active_robot or self.active_robot not in self.clients:
+            print("[ROS] UI 명령 무시: 활성 로봇 없음")
+            return
+        client = self.clients[self.active_robot]
+        client.send_ui_command(command)
+
     def set_auto_speed_level(self, gear: int):
-        """
-        handler.py 에서 auto_speed 메시지 수신 시 호출.
-        지금은 더미 환경이라 Nav2에 반영은 안 하고,
-        각 로봇 객체 내부 상태만 업데이트 + 로그만 남김.
-        """
         if not self.active_robot or self.active_robot not in self.clients:
             print("[NAV2] auto_speed 무시: 활성 로봇 없음")
             return
-
         client = self.clients[self.active_robot]
         client.set_nav2_speed(gear)
 

@@ -46,3 +46,13 @@ def delete_stock(db: Session, stock_id: int):
     db.delete(db_stock)
     db.commit()
     return db_stock
+
+# 수량 업데이트 함수
+def update_stock_quantity(db: Session, stock_id: int, new_quantity: int):
+    stock = db.query(Stock).filter(Stock.id == stock_id).first()
+    if not stock:
+        return None
+    stock.quantity = new_quantity
+    db.commit()
+    db.refresh(stock)
+    return stock

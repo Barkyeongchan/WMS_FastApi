@@ -40,19 +40,51 @@ class RosListener:
 
     def _handle_message(self, topic_name, msg):
         try:
+            # ===================================================
+            # 🚩 도착 신호 처리: /nav topic 의 ARRIVED:XXX 감지
+            # ===================================================
+            if topic_name == "/nav":
+                text = msg.get("data", "")
+                if isinstance(text, str) and text.startswith("ARRIVED:"):
+                    pin_name = text.replace("ARRIVED:", "")
+
+                    print(f"[ROS] 🏁 도착 신호 수신 → {pin_name}")
+
+                    # WAIT 도착 → 웹에 대기중 상태 전달  ★ 추가
+                    if pin_name == "WAIT":
+                        ws_manager.broadcast({
+                            "type": "robot_status",
+                            "payload": {
+                                "state": "대기중"
+                            }
+                        })
+
+                    # 웹에 도착 이벤트 전달
+                    ws_manager.broadcast({
+                        "type": "robot_arrived",
+                        "payload": {
+                            "pin": pin_name,
+                            "robot_name": self.robot_name
+                        }
+                    })
+                    return  # 기본 메시지 브로드캐스트는 하지 않음
+
+            # ===================================================
+            # 기존 메시지 처리 흐름
+            # ===================================================
             data = process_ros_data(topic_name, msg, robot_name=self.robot_name)
             if not data:
                 return
-    
-            # ✅ 여기가 핵심 패치 — 모든 메시지에 robot_name 강제 삽입
+
             if "payload" in data:
                 data["payload"]["robot_name"] = self.robot_name
-    
+
             ws_msg = build_message(data["type"], data["payload"])
             ws_manager.broadcast(ws_msg)
-    
+
         except Exception as e:
             print(f"[ROS] ⚠️ {topic_name} 처리 오류:", e)
+
     
 
     def close(self):
