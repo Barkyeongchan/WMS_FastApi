@@ -152,23 +152,37 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  if (pinAdd && pinInput) {
+  if (pinAdd) {
     pinAdd.addEventListener("click", async () => {
-      const name = pinInput.value.trim();
+      const name = document.querySelector(".pin_name_input").value.trim();
+      const xVal = document.querySelector(".pin_x_input").value.trim();
+      const yVal = document.querySelector(".pin_y_input").value.trim();
+    
       if (!name) return alert("위치명을 입력하세요.");
+      if (!xVal || !yVal) return alert("좌표(X,Y)를 입력하세요.");
+    
+      const coords = `${xVal},${yVal}`;
+    
       const res = await fetch("/pins/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, coords }),
       });
+    
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         return alert(err.detail || "위치 추가 실패");
       }
-      pinInput.value = "";
+    
+      // 입력 칸 초기화
+      document.querySelector(".pin_name_input").value = "";
+      document.querySelector(".pin_x_input").value = "";
+      document.querySelector(".pin_y_input").value = "";
+    
       loadPins();
     });
   }
+  
 
   if (pinDel) {
     pinDel.addEventListener("click", async () => {

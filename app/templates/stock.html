@@ -95,15 +95,21 @@
 
               <div class="pin_panel">
                 <h3>위치 관리</h3>
-                <input type="text" placeholder="위치명 입력 (예: A1)" />
+                 <input type="text" class="pin_name_input" placeholder="위치명 입력 (예: A1)" />
+
+                <div class="pin_xy_row">
+                  <input type="number" class="pin_x_input" placeholder="X" step="0.01" />
+                  <input type="number" class="pin_y_input" placeholder="Y" step="0.01" />
+                </div>
+                
                 <div class="button_row">
                   <button class="add_btn">추가</button>
                   <button class="delete_btn">삭제</button>
                 </div>
-                <ul class="pin_list">
-                  <li><input type="checkbox" /></li>
-                </ul>
+              
+                <ul class="pin_list"></ul>
               </div>
+
             </div>
           </div>
         </div>

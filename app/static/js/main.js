@@ -270,6 +270,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, 200);
 
+  async function sendInbound() {
+      const stockId = selectedStockId;
+      const qty = Number(document.getElementById("change_qty").value);
+      const robot = document.getElementById("robot_select").value;
+      const pin = selectedStockPin; // 예: "RACK_A"
+    
+      await fetch("/robot/command", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+              stock_id: stockId,
+              qty: qty,
+              robot: robot,
+              pin: pin
+          })
+      });
+  }
+
+
   /* ============================================================================ */
   (async () => {
     await loadProducts();

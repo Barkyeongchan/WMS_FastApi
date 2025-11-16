@@ -466,3 +466,21 @@
   color: #333 !important;
   font-weight: normal !important;
 }
+
+/* X, Y만 가로 정렬 */
+.pin_xy_row {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
+
+/* X, Y 동일 크기 */
+.pin_xy_row input {
+  flex: 1;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
