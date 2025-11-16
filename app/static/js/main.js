@@ -164,9 +164,37 @@ document.addEventListener('DOMContentLoaded', () => {
   ============================================================================ */
   ws.onmessage = (event) => {
     const msg = JSON.parse(event.data);
+
+    if (msg.type === "stock_update") {
+        console.log("📦 재고 갱신 → 테이블 리로드");
+        loadProducts();   // ← DB 재조회 후 테이블 갱신
+        return;
+    }
+
     const p   = msg?.payload || {};
     const name = p.robot_name;
 
+    /* ----------------------------------------------------------
+       1) robot_status 는 robot_name 없이 올 수도 있음 (WAIT)
+    ---------------------------------------------------------- */
+    if (msg.type === "robot_status") {
+      const state = p.state || "대기중";
+
+      // 이름이 있으면 해당 로봇에 반영
+      if (name && ROBOT_STATUS[name]) {
+        ROBOT_STATUS[name].mode = state;
+        activeRobotName = name;
+      }
+      // 이름이 없으면, 현재 활성 로봇에 반영 (단일 로봇 가정)
+      else if (activeRobotName && ROBOT_STATUS[activeRobotName]) {
+        ROBOT_STATUS[activeRobotName].mode = state;
+      }
+
+      renderRobotCards();
+      return;
+    }
+
+    // 나머지 타입은 기존 로직 그대로
     if (!name || !ROBOT_STATUS[name]) return;
     const r = ROBOT_STATUS[name];
     activeRobotName = name;
@@ -193,13 +221,18 @@ document.addEventListener('DOMContentLoaded', () => {
       updateRobotMarker(r);
     }
 
-    else if (msg.type === "robot_status") {
-      r.mode = p.state || "대기중";
+    else if (msg.type === "robot_arrived") {
+      const pin = p.pin;
+
+      if (pin === "WAIT") {
+        // 복귀 완료
+        r.mode = "대기중";
+      } else {
+        // 목적지 도착 → App에서 확인 누르기 전까지는 '작업중'
+        r.mode = "작업중";
+      }
     }
 
-    else if (msg.type === "robot_arrived") {
-      r.mode = "작업중";
-    }
 
     renderRobotCards();
   };
@@ -336,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     console.log("📤 서버로 전송:", wsMsg);
 
-    // UI 상태 업데이트
+    // UI 상태 업데이트 (기존 동작 유지)
     if (activeRobotName) {
       ROBOT_STATUS[activeRobotName].mode = `${selectedItem.pin_name} 이동중`;
       renderRobotCards();

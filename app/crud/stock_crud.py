@@ -14,7 +14,7 @@ def get_stock_by_id(db: Session, stock_id: int):
     return db.query(Stock).filter(Stock.id == stock_id).first()
 
 
-# CREATE 새로운 재고 추가
+# CREATE
 def create_stock(db: Session, stock: StockCreate):
     db_stock = Stock(**stock.dict())
     db.add(db_stock)
@@ -23,7 +23,7 @@ def create_stock(db: Session, stock: StockCreate):
     return db_stock
 
 
-# UPDATE 재고 데이터 수정
+# UPDATE
 def update_stock(db: Session, stock_id: int, update_data: StockUpdate):
     db_stock = db.query(Stock).filter(Stock.id == stock_id).first()
     if not db_stock:
@@ -37,7 +37,7 @@ def update_stock(db: Session, stock_id: int, update_data: StockUpdate):
     return db_stock
 
 
-# DELETE 재고 삭제
+# DELETE
 def delete_stock(db: Session, stock_id: int):
     db_stock = db.query(Stock).filter(Stock.id == stock_id).first()
     if not db_stock:
@@ -47,12 +47,19 @@ def delete_stock(db: Session, stock_id: int):
     db.commit()
     return db_stock
 
+
 # 수량 업데이트 함수
 def update_stock_quantity(db: Session, stock_id: int, new_quantity: int):
+    """
+    DB 수량 업데이트만 하고 WebSocket 브로드캐스트는 manager.py에서 처리함
+    (중복 전송 / 상태 꼬임 방지)
+    """
     stock = db.query(Stock).filter(Stock.id == stock_id).first()
     if not stock:
         return None
+
     stock.quantity = new_quantity
     db.commit()
     db.refresh(stock)
+
     return stock
