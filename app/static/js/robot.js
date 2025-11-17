@@ -9,6 +9,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const nameInput = document.getElementById("robot_name_input");
   const ipInput = document.getElementById("robot_ip_input");
   const netStatusEl = document.querySelector(".value.network_status");
+  const moveBtn = document.querySelector(".move_btn");
+  const returnBtn = document.querySelector(".return");
+  const emergencyBtn = document.querySelector(".stop");
+  
 
   // 시스템 상태
   const sysStatusEl = document.querySelector(".value.system_status");
@@ -130,13 +134,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ====== 속도 정책 (터틀봇3 Burger 전용) ======
-  // 자동 / 수동 공통 기어별 최대 선속도 (m/s)
-  const MAX_SPEED = { 1: 0.10, 2: 0.15, 3: 0.22 }; // TB3 Burger 공식 최대 0.22m/s
-  const MAX_SPEED_DISPLAY = 0.22; // 게이지 기준 최고속도
+  // ====== 속도 정책 ======
+  const MAX_SPEED = { 1: 0.10, 2: 0.15, 3: 0.22 };
+  const MAX_SPEED_DISPLAY = 0.22;
 
-  let currentSpeedLevel = 1; // 기어(1~3) = 자동/수동 공통
-  let currentMode = "auto";  // "auto" | "manual"
+  let currentSpeedLevel = 1;
+  let currentMode = "auto";
 
   const speedSlider = document.getElementById("speed_slider");
   const modeText = document.querySelector(".value.mode");
@@ -145,10 +148,23 @@ document.addEventListener("DOMContentLoaded", () => {
   const manualLock = document.getElementById("manual_lock");
   const dirButtons = document.querySelectorAll(".dir_btn");
 
-  // ====== WebSocket 메시지 처리 ======
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
+
+      if (data.type === "robot_status") {
+        const state = data.payload.state || "-";
+        const el = document.getElementById("robot_state");
+
+        if (el) {
+          el.textContent = state;
+
+          if (state === "이동중") el.style.color = "#e67e22";      // 주황
+          else if (state === "복귀중") el.style.color = "#3498db"; // 파랑
+          else if (state === "작업중") el.style.color = "#e74c3c";
+          else el.style.color = "#2c3e50";                         // 기본
+        }
+      }
 
       // 연결 상태
       if (data.type === "status") {
@@ -172,7 +188,7 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
           const posRow = document.querySelector(
-            ".status_row .value.position_value"
+            ".value.position_value"
           );
           if (posRow) posRow.textContent = "( - , - )";
 
@@ -202,30 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (level <= 1) level *= 100;
         level = Math.max(0, Math.min(100, level));
 
-        const rows = document.querySelectorAll(".status_row.gauge_row");
-        let batteryRow = null;
-        rows.forEach((row) => {
-          const label = row.querySelector(".label");
-          if (label && label.textContent.trim().includes("배터리"))
-            batteryRow = row;
-        });
-        if (!batteryRow) return;
-
-        const bar = batteryRow.querySelector(".bar_fill.battery");
-        const textEl = batteryRow.querySelector(".value.small");
-
-        if (bar) bar.style.width = `${level.toFixed(0)}%`;
-        if (textEl) textEl.textContent = `${level.toFixed(0)}%`;
-
-        if (bar) {
-          if (level < 20) {
-            bar.style.background =
-              "linear-gradient(90deg, #e74c3c, #c0392b)";
-          } else {
-            bar.style.background = "";
-            bar.classList.add("battery");
-          }
-        }
+        updateBattery(level);
 
         console.log(
           `[BATTERY] ${data?.payload?.robot_name || "-"} → ${level.toFixed(
@@ -234,14 +227,14 @@ document.addEventListener("DOMContentLoaded", () => {
         );
       }
 
-      // 위치/속도 표시 (amcl_pose + odom 속도)
+      // 위치 (amcl_pose)
       if (data.type === "amcl_pose") {
         try {
           const x = data.payload?.x;
           const y = data.payload?.y;
-        
+
           const posRow = document.querySelector(
-            ".status_row .value.position_value"
+            ".value.position_value"
           );
           if (posRow) {
             posRow.textContent =
@@ -249,24 +242,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? `(${x.toFixed(1)}, ${y.toFixed(1)})`
                 : "( - , - )";
           }
-        
-          // amcl에는 속도가 없기 때문에 odom에서 최신 속도만 따로 저장하도록 구성 필요
+
+          // 속도는 odom에서 마지막으로 저장된 값 사용
           const speedRow = document.querySelector(
             ".status_row.gauge_row .value.small"
           );
           const speedBar = document.querySelector(".bar_fill.speed");
-        
+
           if (speedRow && lastOdometrySpeed != null) {
             const speed = Math.abs(lastOdometrySpeed);
             speedRow.textContent = `${speed.toFixed(2)} m/s`;
-          
+
             const percent = Math.min(
               (speed / MAX_SPEED_DISPLAY) * 100,
               100
             );
-          
+
             speedBar.style.width = `${percent}%`;
-          
+
             if (percent < 40) {
               speedBar.style.background =
                 "linear-gradient(90deg, #3498db, #2980b9)";
@@ -278,17 +271,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 "linear-gradient(90deg, #e74c3c, #c0392b)";
             }
           }
+
+          // ★★★★★ 지도 부분: 로봇 위치 업데이트 호출 ★★★★★
+          robotMap_updateRobotMarker(x, y, data.payload.theta);
+
         } catch (e) {
           console.error("amcl_pose 처리 오류:", e);
         }
       }
 
-      // odom → 속도만 별도로 저장
+      // odom → 속도 업데이트
       if (data.type === "odom") {
-        const lin = data.payload?.linear || {};
-        lastOdometrySpeed = lin.x ?? 0;
+        lastOdometrySpeed = data.payload?.linear?.x ?? 0;
       }
-
 
       // 시스템 상태
       if (data.type === "diagnostics") {
@@ -299,12 +294,13 @@ document.addEventListener("DOMContentLoaded", () => {
           sysStatusEl.style.color = color;
         }
       }
+
     } catch (err) {
       console.error("[WS 메시지 처리 오류]", err);
     }
   };
 
-  // ====== 로봇 목록 ======
+  // ====== 로봇 목록 불러오기 ======
   async function loadRobotList() {
     try {
       const res = await fetch("/robots/");
@@ -328,9 +324,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const savedId = localStorage.getItem(STORAGE_KEY);
       if (savedId && selectEl.querySelector(`option[value='${savedId}']`)) {
         selectEl.value = savedId;
-        console.log(
-          `[RESTORE] 마지막 선택된 로봇 복원: ${savedId}`
-        );
+        console.log(`[RESTORE] 마지막 선택된 로봇 복원: ${savedId}`);
 
         try {
           const st = await fetch(`/robots/status/${savedId}`);
@@ -419,14 +413,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ====== 자동/수동 모드 & 수동 가속 제어 ======
 
-  // 수동 가속 변수
   let currentLinear = 0;
   let currentAngular = 0;
   let accelInterval = null;
 
-  // 부드러운 가속 설정값
-  const ACCEL_STEP = 0.03; // 매 tick 선속도 증가량
-  const ACCEL_TICK = 70;   // tick 간격(ms) → 약 14Hz
+  const ACCEL_STEP = 0.03;
+  const ACCEL_TICK = 70;
   const BASE_ANGULAR = 0.6;
 
   function disableManualControl() {
@@ -467,7 +459,6 @@ document.addEventListener("DOMContentLoaded", () => {
       autoBtn?.classList.add("active");
       manualBtn?.classList.remove("active");
       disableManualControl();
-      // 자동 모드로 전환 시 현재 기어 기준으로 nav2 속도 설정 요청
       sendAutoSpeed(currentSpeedLevel);
     } else {
       currentMode = "manual";
@@ -480,38 +471,38 @@ document.addEventListener("DOMContentLoaded", () => {
   if (autoBtn) autoBtn.addEventListener("click", () => setMode("auto"));
   if (manualBtn) manualBtn.addEventListener("click", () => setMode("manual"));
 
-  // ====== 자동 모드 속도 변경 (nav2용 메시지) ======
   function sendAutoSpeed(gear) {
     if (ws.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify({
-      type: "auto_speed",
-      payload: { gear }
-    }));
-    console.log(`[AUTO] 자동 모드 기어 → ${gear}단 (max=${MAX_SPEED[gear]} m/s)`);
+    ws.send(
+      JSON.stringify({
+        type: "auto_speed",
+        payload: { gear },
+      })
+    );
+    console.log(`[AUTO] 자동 모드 기어 → ${gear}단`);
   }
 
-  // ====== 속도 슬라이더 (1~3단, 자동/수동 공통) ======
+  // ====== 속도 슬라이더 ======
   if (speedSlider) {
     speedSlider.addEventListener("input", (e) => {
       currentSpeedLevel = Number(e.target.value);
       console.log(
         `[속도 단계] ${currentSpeedLevel}단 (${MAX_SPEED[currentSpeedLevel]} m/s)`
       );
-      // 자동 모드일 때는 nav2 속도도 같이 변경
       if (currentMode === "auto") {
         sendAutoSpeed(currentSpeedLevel);
       }
     });
   }
 
-  // ====== 수동 모드에서 Web → cmd_vel 전송 ======
+  // ====== cmd_vel ======
   function sendVelocity(linearX, angularZ) {
     if (ws.readyState !== WebSocket.OPEN) {
       console.warn("[WS] 연결 안됨, 명령 전송 불가");
       return;
     }
 
-    const maxV = MAX_SPEED[currentSpeedLevel]; // TB3 기어별 최대속도
+    const maxV = MAX_SPEED[currentSpeedLevel];
     const clampedLinear = Math.max(-maxV, Math.min(maxV, linearX));
     const clampedAngular = Math.max(-1.0, Math.min(1.0, angularZ));
 
@@ -525,18 +516,13 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     ws.send(JSON.stringify(msg));
-    console.log(
-      `[CMD] 전송 → linear=${clampedLinear.toFixed(
-        2
-      )} / angular=${clampedAngular.toFixed(2)} (${currentSpeedLevel}단)`
-    );
   }
 
-  // 🔥 가속 시작 함수
+  // ====== 가속 시작 ======
   function startAcceleration(direction) {
     if (currentMode !== "manual") return;
 
-    stopAcceleration(); // 중복 방지
+    stopAcceleration();
 
     accelInterval = setInterval(() => {
       const maxV = MAX_SPEED[currentSpeedLevel];
@@ -555,17 +541,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }, ACCEL_TICK);
   }
 
-  // 🔥 가속 중지 함수
+  // ====== 가속 중지 ======
   function stopAcceleration() {
     if (accelInterval) clearInterval(accelInterval);
     accelInterval = null;
-
     currentLinear = 0;
     currentAngular = 0;
     sendVelocity(0, 0);
   }
 
-  // 🔥 방향 버튼 → 부드러운 가속
+  // ====== 방향 버튼 ======
   const upBtn = document.querySelector(".dir_btn.up");
   const downBtn = document.querySelector(".dir_btn.down");
   const leftBtn = document.querySelector(".dir_btn.left");
@@ -582,18 +567,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!btn) return;
     btn.addEventListener("mouseup", stopAcceleration);
     btn.addEventListener("mouseleave", () => {
-      // 버튼 밖으로 나가면 정지
       if (accelInterval) stopAcceleration();
     });
   });
 
   if (stopBtn) stopBtn.addEventListener("click", stopAcceleration);
 
-  // 🔥 키보드 조작도 동일한 부드러운 가속 적용
+  // ====== 키보드 방향키 ======
   document.addEventListener("keydown", (e) => {
     if (currentMode !== "manual") return;
-
-    // 이미 가속 중이면 중복 시작 방지
     if (accelInterval) return;
 
     switch (e.key) {
@@ -609,24 +591,249 @@ document.addEventListener("DOMContentLoaded", () => {
       case "ArrowRight":
         startAcceleration("right");
         break;
-      default:
-        break;
     }
   });
 
   document.addEventListener("keyup", (e) => {
-    // 방향키 떼면 정지
     if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
       stopAcceleration();
     }
   });
 
-  // 초기 모드 & 기어 설정
+  // ====== 초기 설정 ======
   setMode("auto");
-  if (speedSlider) {
-    speedSlider.value = String(currentSpeedLevel);
+  if (speedSlider) speedSlider.value = String(currentSpeedLevel);
+
+  loadRobotList();
+
+  async function loadPins() {
+    const res = await fetch("/pins/");
+    const pins = await res.json();
+
+    const pinSelect = document.getElementById("pin_select");
+    pinSelect.innerHTML = "";
+
+    pins.forEach(pin => {
+      const op = document.createElement("option");
+      op.value = pin.id;
+      op.textContent = `${pin.name}`;
+      pinSelect.appendChild(op);
+    });
   }
 
-  // 초기 로봇 목록 로드
-  loadRobotList();
-});
+  loadPins();
+
+  if (moveBtn) {
+    moveBtn.addEventListener("click", () => {
+      const pinSelect = document.getElementById("pin_select");
+      const pinName = pinSelect.selectedOptions[0].textContent.split(" ")[0];
+
+      const currentRobotName =
+        document.getElementById("robot_select")
+                ?.selectedOptions[0]
+                ?.textContent.split("(")[0].trim();
+
+      // 1) 상태 브로드캐스트
+      ws.send(JSON.stringify({
+        type: "robot_status",
+        payload: {
+          name: currentRobotName,
+          state: "이동중"
+        }
+      }));
+
+      // 2) 실제 이동 명령
+      const command = `MOVE_TO_PIN ${pinName}`;
+      ws.send(JSON.stringify({
+        type: "ui_command",
+        payload: { command }
+      }));
+
+      console.log("[WS] 위치 이동 명령:", command);
+    });
+  }
+
+  if (returnBtn) {
+    returnBtn.addEventListener("click", () => {
+    
+      const currentRobotName =
+        document.getElementById("robot_select")
+                ?.selectedOptions[0]
+                ?.textContent.split("(")[0].trim();
+    
+      // 1) 상태 업데이트
+      ws.send(JSON.stringify({
+        type: "robot_status",
+        payload: {
+          name: currentRobotName,
+          state: "복귀중"
+        }
+      }));
+    
+      // 2) 실제 명령
+      ws.send(JSON.stringify({
+        type: "ui_command",
+        payload: { command: "WAIT" }
+      }));
+    
+      console.log("[WS] 복귀 명령 전송");
+    });
+  }
+
+  if (emergencyBtn) {
+    emergencyBtn.addEventListener("click", () => {
+
+      // 1) 즉시 정지 cmd_vel 전송
+      ws.send(JSON.stringify({
+        type: "cmd_vel",
+        payload: {
+          linear: { x: 0, y: 0, z: 0 },
+          angular: { x: 0, y: 0, z: 0 },
+          gear: 0
+        }
+      }));
+
+      // 2) 로봇 상태도 갱신 (대시보드·로봇관리 둘 다)
+      ws.send(JSON.stringify({
+        type: "robot_status",
+        payload: {
+          state: "비상정지"
+        }
+      }));
+
+      console.log("🛑 비상정지 즉시 정지 명령 전송!");
+    });
+  }
+
+  
+
+
+  /* ============================================================
+     🔥 로봇 관리 페이지 지도 기능 (대시보드와 충돌 방지)
+     모든 변수/함수 robotMap_ 네임스페이스로 분리됨
+  ============================================================ */
+
+  const robotMap_container = document.querySelector(".map_canvas");
+  let robotMap_img = null;
+  let robotMap_marker = null;
+
+  let robotMap_info = {
+    image: null,
+    resolution: 0.05,
+    origin: [0, 0]
+  };
+
+  const robotMap_PIVOT_X = 1.42;
+  const robotMap_PIVOT_Y = 1.72;
+
+  const ROBOT_MAP_OFFSET_X = -43;
+  const ROBOT_MAP_OFFSET_Y = -5;
+  const ROBOT_MAP_SCALE_X = 0.85;
+  const ROBOT_MAP_SCALE_Y = 0.80;
+
+  /* ------------------------------------------------------------
+     지도 로딩
+  ------------------------------------------------------------ */
+  async function robotMap_loadMap() {
+    try {
+      const res = await fetch("/map/info");
+      const info = await res.json();
+
+      robotMap_info = info;
+
+      // 기존 안내 문구 제거
+      robotMap_container.innerHTML = "";
+
+      // 이미지 엘리먼트 생성
+      robotMap_img = document.createElement("img");
+      robotMap_img.src = info.image;
+      robotMap_img.style.position = "absolute";
+      robotMap_img.style.top = "0";
+      robotMap_img.style.left = "0";
+      robotMap_img.style.width = "100%";
+      robotMap_img.style.height = "100%";
+      robotMap_img.style.objectFit = "contain";
+
+      robotMap_container.style.position = "relative";
+      robotMap_container.appendChild(robotMap_img);
+
+      // 로봇 마커
+      robotMap_marker = document.createElement("div");
+      robotMap_marker.style.position = "absolute";
+      robotMap_marker.style.width = "25px";
+      robotMap_marker.style.height = "25px";
+      robotMap_marker.style.background = "red";
+      robotMap_marker.style.borderRadius = "50%";
+      robotMap_marker.style.transformOrigin = "center";
+      robotMap_marker.style.display = "none";
+      robotMap_container.appendChild(robotMap_marker);
+
+      console.log("📌 RobotMap: 지도 로딩 완료");
+
+    } catch (err) {
+      console.error("RobotMap: 지도 로딩 실패 →", err);
+    }
+  }
+
+  /* ------------------------------------------------------------
+     ROS → 픽셀 변환
+  ------------------------------------------------------------ */
+  function robotMap_rosToPixel(x, y) {
+    if (!robotMap_img || !robotMap_img.complete) return { x: 0, y: 0 };
+
+    const iw = robotMap_img.naturalWidth;
+    const ih = robotMap_img.naturalHeight;
+
+    const cw = robotMap_container.clientWidth;
+    const ch = robotMap_container.clientHeight;
+
+    const scaleBase = Math.max(cw / iw, ch / ih);
+
+    const pivot_px = (robotMap_PIVOT_X - robotMap_info.origin[0]) / robotMap_info.resolution;
+    const pivot_py = (robotMap_PIVOT_Y - robotMap_info.origin[1]) / robotMap_info.resolution;
+    const pivot_pyFlip = ih - pivot_py;
+
+    const offsetX0 = (cw - iw * scaleBase) / 2;
+    const offsetY0 = (ch - ih * scaleBase) / 2;
+
+    const pivot_global_x = pivot_px * scaleBase + offsetX0;
+    const pivot_global_y = pivot_pyFlip * scaleBase + offsetY0;
+
+    const px = (x - robotMap_info.origin[0]) / robotMap_info.resolution;
+    const py = (y - robotMap_info.origin[1]) / robotMap_info.resolution;
+    const pyFlip = ih - py;
+
+    return {
+      x:
+        pivot_global_x +
+        (px - pivot_px) * scaleBase * ROBOT_MAP_SCALE_X +
+        ROBOT_MAP_OFFSET_X,
+      y:
+        pivot_global_y +
+        (pyFlip - pivot_pyFlip) * scaleBase * ROBOT_MAP_SCALE_Y +
+        ROBOT_MAP_OFFSET_Y,
+    };
+  }
+
+  /* ------------------------------------------------------------
+     마커 업데이트
+  ------------------------------------------------------------ */
+  function robotMap_updateRobotMarker(x, y, theta) {
+    if (!robotMap_marker || !robotMap_img) return;
+
+    const p = robotMap_rosToPixel(x, y);
+
+    robotMap_marker.style.display = "block";
+    robotMap_marker.style.left = `${p.x - 9}px`;
+    robotMap_marker.style.top = `${p.y - 9}px`;
+    robotMap_marker.style.transform = `rotate(${(theta || 0) * 180 / Math.PI}deg)`;
+  }
+
+  /* ------------------------------------------------------------
+     초기 지도 로딩 실행
+  ------------------------------------------------------------ */
+  robotMap_loadMap();
+
+
+}); // END OF DOMContentLoaded
+

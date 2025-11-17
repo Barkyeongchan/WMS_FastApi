@@ -92,6 +92,12 @@ main {
   flex: 1;
 }
 
+.robot_select {
+  width: 250px;
+  max-width: 100%;
+}
+
+
 /* 이하 동일 */
 .robot_header {
   display: flex;
@@ -102,9 +108,9 @@ main {
 }
 
 .status_tag {
-  padding: 4px 10px;
+  padding: 6px 10px;
   border-radius: 6px;
-  font-size: 0.8rem;
+  font-size: 1.2rem;
   font-weight: 600;
   color: #fff;
 }
@@ -115,12 +121,18 @@ main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 8px 0;
+  margin: 20px 0;
 }
 
-.label { font-size: 0.9rem; color: #555; width: 80px; }
-.value { font-weight: 600; color: #2c3e50; }
-.value.small { font-size: 0.85rem; color: #555; }
+.label { font-size: 1.25rem; color: #555; width: 80px; font-weight: 600;}
+.value { font-weight: 800; color: #2c3e50; }
+.value.small {
+  min-width: 65px;
+  text-align: right;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #444;
+}
 .value.mode.auto {
   background: #2ecc71; color: #fff; padding: 4px 10px; border-radius: 6px;
 }
@@ -493,11 +505,11 @@ main {
 }
 
 .robot_select {
-  padding: 6px 10px;
+  padding: 10px 5px;
   background: #fff;
   border: 1px solid #dfe4ea;
   border-radius: 6px;
-  font-size: 0.95rem;
+  font-size: 1.2rem;
   font-weight: 600;
   cursor: pointer;
   color: #2c3e50;
@@ -507,6 +519,15 @@ main {
   outline: none;
   border-color: #4b7bec;
 }
+
+/* 위치 좌표 스타일 강화 */
+.value.position_value {
+  font-size: 1.3rem;     /* 🔥 더 크게 */
+  font-weight: 600;       /* 🔥 더 굵게 */
+  color: #2c3e50;         /* 진한 네이비 */
+  letter-spacing: 0.5px;  /* 미세한 간격 → 고급스러움 */
+}
+
 
 /* ====== 추가 상태 스타일 ====== */
 
@@ -527,6 +548,13 @@ main {
 .value.network_status.offline {
   color: #c0392b; /* 끊김 */
 }
+
+.value.system_status,
+.value.network_status {
+  font-size: 1.2rem;    /* 🔥 글자 크기 업 */
+  font-weight: 800;     /* 🔥 더 굵게 */
+}
+
 
 /* 수행 시간 */
 .value.exec_time {
@@ -570,4 +598,11 @@ main {
 /* 숨김처리 공통 */
 .hidden {
   display: none !important;
+}
+
+/* 🔥 헤더 작업 상태 (대기중 / 이동중 / 작업중) */
+.value.robot_state {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #2c3e50;    /* 기본 진한색 */
 }

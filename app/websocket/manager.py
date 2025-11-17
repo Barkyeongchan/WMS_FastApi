@@ -226,3 +226,30 @@ async def handle_message(ws: WebSocket, data: dict):
             print("[WS] complete_stock_move 처리 오류:", e)
 
         return
+    
+    # --------------------------------------------------
+    #  클라이언트가 요청한 로봇 상태 갱신 (이동중/작업중/복귀중)
+    # --------------------------------------------------
+    if msg_type == "robot_status":
+        payload = data.get("payload") or {}
+        print(f"[WS] 상태 갱신 요청 → {payload}")
+    
+        ws_manager.broadcast({
+            "type": "robot_status",
+            "payload": payload
+        })
+        return
+    
+    
+    elif msg_type == "ui_command":
+        cmd = data.get("payload", {}).get("command")
+        print(f"[WS] UI 명령 수신: {cmd}")
+
+        from app.core.ros import ros_manager
+        if ros_manager.ros_manager.ui_topic:
+            ros_manager.ros_manager.ui_topic.publish(
+                roslibpy.Message({"data": cmd})
+            )
+            print(f"[ROS] 📤 /wasd_ui_command → {cmd}")
+
+        return

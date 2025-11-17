@@ -33,7 +33,7 @@
 
             <div class="robot_header">
               <select id="robot_select" class="robot_select"></select>
-              <span class="status_tag idle">대기중</span>
+              <div id="robot_state" class="value robot_state">대기중</div>
             </div>
 
             <div class="robot_body">
@@ -44,7 +44,7 @@
             
               <div class="status_row">
                 <span class="label">위치</span>
-                <span class="value position_value">( - , - )</span>
+                <span class="value position_value" id="robot_pos">( - , - )</span>
               </div>
 
               <div class="status_row gauge_row">
@@ -64,16 +64,6 @@
               </div>
             
               <div class="status_row">
-                <span class="label">진행 상황</span>
-                <span class="value mission">-</span>
-              </div>
-
-              <div class="status_row">
-                <span class="label">수행시간</span>
-                <span class="value exec_time">0.0초</span>
-              </div>
-            
-              <div class="status_row">
                 <span class="label">시스템</span>
                 <span class="value system_status">-</span>
               </div>
@@ -90,7 +80,7 @@
         <div class="control_panel">
           <p class="section_title">로봇 제어</p>
           <div class="control_wrapper">
-            <!-- 왼쪽 제어 -->
+
             <div class="control_left">
               <div class="speed_control">
                 <label for="speed_slider">속도 조절</label>
@@ -112,10 +102,8 @@
                 <button class="control_btn return">대기장소 복귀</button>
                 <button class="control_btn stop">비상 정지</button>
               </div>
-            
             </div>
           
-            <!-- 오른쪽 제어 -->
             <div class="control_right">
               <div class="mode_switch">
                 <button id="auto_mode" class="mode_btn active">자동 모드</button>
@@ -138,17 +126,22 @@
                 </div>
               </div>
             </div>
+
           </div>
         </div>
       </div>
 
-      <!-- 지도 -->
+      <!-- 🟢 지도 -->
       <div class="right_panel">
         <div class="map_section">
           <p class="section_title">실시간 지도</p>
-          <div class="map_canvas">
-            <p>※ SLAM 기반 실시간 지도 표시 예정</p>
+
+          <!-- ★★★★★ 대시보드와 충돌 방지용 고유 ID -->
+          <div class="map_canvas" id="robotMap_container"
+               style="position: relative; overflow: hidden;">
+            <!-- 여기 안은 robot.js가 자동으로 생성 -->
           </div>
+
         </div>
       </div>
 
@@ -156,7 +149,7 @@
   </div>
 </main>
 
-<!-- ✅ 모달 -->
+<!-- 모달 -->
 <div id="robot_modal" class="modal hidden">
   <div class="modal_content">
     <p class="modal_title">로봇 추가 / 제거</p>

@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const emptyHint   = document.getElementById("empty_hint");
   const pickedName  = document.getElementById("picked_name");
 
+
   let products = [];
   let selectedItem = null;
   let ROBOT_STATUS = {};
@@ -310,39 +311,49 @@ document.addEventListener('DOMContentLoaded', () => {
   ============================================================================ */
 
   document.getElementById("btn_in").addEventListener("click", () => {
-    if (!selectedItem) return alert("상품을 선택하세요!");
-    if (!robotSelect.value) return alert("로봇을 선택하세요!");
+      if (!selectedItem) return alert("상품을 선택하세요!");
+      if (!robotSelect.value) return alert("로봇을 선택하세요!");
 
-    const qty = Number(document.getElementById("delta_qty").value);
+      const qty = Number(document.getElementById("delta_qty").value);
 
-    const entry = {
-      stock_id: selectedItem.id,
-      amount: qty,
-      robot_id: robotSelect.value,
-      mode: "INBOUND"
-    };
+      // 🔥 로봇 이름 가져오기
+      const robotName = robotSelect.selectedOptions[0].textContent.split(" ")[0];
+      const pinName = selectedItem.pin_name;
 
-    pendingCommands.push(entry);
+      const entry = {
+        stock_id: selectedItem.id,
+        amount: qty,
+        robot_name: robotName,  // 여기 저장됨
+        mode: "INBOUND"
+      };
 
-    addPendingLog(`[입고] ${selectedItem.name} ${qty}개 → 로봇 ${robotSelect.value}`);
+      pendingCommands.push(entry);
+
+      addPendingLog(`[입고] ${robotName} : ${selectedItem.name} ${qty}개 → ${pinName}`);
+
   });
 
+
   document.getElementById("btn_out").addEventListener("click", () => {
-    if (!selectedItem) return alert("상품을 선택하세요!");
-    if (!robotSelect.value) return alert("로봇을 선택하세요!");
+      if (!selectedItem) return alert("상품을 선택하세요!");
+      if (!robotSelect.value) return alert("로봇을 선택하세요!");
 
-    const qty = Number(document.getElementById("delta_qty").value);
+      const qty = Number(document.getElementById("delta_qty").value);
 
-    const entry = {
-      stock_id: selectedItem.id,
-      amount: qty,
-      robot_id: robotSelect.value,
-      mode: "OUTBOUND"
-    };
+      // 🔥 로봇 이름 가져오기
+      const robotName = robotSelect.selectedOptions[0].textContent.split(" ")[0];
+      const pinName = selectedItem.pin_name;
 
-    pendingCommands.push(entry);
+      const entry = {
+        stock_id: selectedItem.id,
+        amount: qty,
+        robot_name: robotName,
+        mode: "OUTBOUND"
+      };
 
-    addPendingLog(`📤 [출고] ${selectedItem.name} ${qty}개 → 로봇 ${robotSelect.value}`);
+      pendingCommands.push(entry);
+
+      addPendingLog(`[출고] ${robotName} : ${selectedItem.name} ${qty}개 → ${pinName}`);
   });
 
   /* ============================================================================
