@@ -606,3 +606,16 @@ main {
   font-weight: 700;
   color: #2c3e50;    /* 기본 진한색 */
 }
+
+/* 로봇 상태 텍스트 공통 */
+.robot_state {
+    font-size: 1.3rem;
+    font-weight: 700;
+    transition: color 0.25s ease;
+}
+
+/* 상태별 색상 */
+.robot_state.waiting { color: #2c3e50; }   /* 대기중 = 진한 네이비 */
+.robot_state.moving { color: #e67e22; }    /* 이동중 = 주황 */
+.robot_state.returning { color: #3498db; } /* 복귀중 = 파랑 */
+.robot_state.working { color: #e74c3c; }   /* 작업중 = 빨강 */

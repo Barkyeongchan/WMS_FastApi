@@ -153,18 +153,39 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = JSON.parse(event.data);
 
       if (data.type === "robot_status") {
-        const state = data.payload.state || "-";
-        const el = document.getElementById("robot_state");
-
-        if (el) {
+          const state = data.payload?.state || "-";
+          const el = document.getElementById("robot_state");
+          if (!el) return;
+            
+          // 텍스트 표시
           el.textContent = state;
-
-          if (state === "이동중") el.style.color = "#e67e22";      // 주황
-          else if (state === "복귀중") el.style.color = "#3498db"; // 파랑
-          else if (state === "작업중") el.style.color = "#e74c3c";
-          else el.style.color = "#2c3e50";                         // 기본
-        }
+            
+          // 기존 클래스 초기화
+          el.className = "value robot_state";
+            
+          // 상태별 클래스 부여
+          if (state === "대기중") el.classList.add("waiting");
+          if (state === "이동중") el.classList.add("moving");
+          if (state === "복귀중") el.classList.add("returning");
+          if (state === "작업중") el.classList.add("working");
       }
+      
+      
+      // ⭐ 로봇 도착 처리 (작업중 / 대기중)
+      if (data.type === "robot_arrived") {
+          const el = document.getElementById("robot_state");
+      
+          const pin = data.payload.pin;
+      
+          if (pin === "WAIT") {
+              el.textContent = "대기중";   // 복귀 완료
+          } else {
+              el.textContent = "작업중";   // 목적지 도착
+          }
+        
+          return;  // 더 이상 아래 코드 수행 X
+      }
+
 
       // 연결 상태
       if (data.type === "status") {

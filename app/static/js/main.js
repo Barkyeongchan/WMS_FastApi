@@ -30,6 +30,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const emptyHint   = document.getElementById("empty_hint");
   const pickedName  = document.getElementById("picked_name");
 
+  const todayInboundEl = document.querySelector(".summary_item:nth-child(2) .summary_desc");
+  const todayOutboundEl = document.querySelector(".summary_item:nth-child(3) .summary_desc");
+  const todayNewItemEl = document.querySelector(".summary_item:nth-child(4) .summary_desc");
+
+
+  let inboundCount = 0;   // 오늘 입고
+  let outboundCount = 0;  // 오늘 출고
+  let newItemCount = 0;   // 신규 상품 등록 (선택)
+
 
   let products = [];
   let selectedItem = null;
@@ -42,6 +51,13 @@ document.addEventListener('DOMContentLoaded', () => {
     resolution: 0.045,
     origin: [0, 0]
   };
+
+  function updateSummary() {
+      todayInboundEl.textContent = inboundCount + "건";
+      todayOutboundEl.textContent = outboundCount + "건";
+      todayNewItemEl.textContent = newItemCount + "건";
+  }
+
 
   /* ============================================================================
       ⭐ 명령 대기 로그 저장용
@@ -347,6 +363,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       addPendingLog(`[입고] ${robotName} : ${selectedItem.name} ${qty}개 → ${pinName}`);
 
+      inboundCount++;
+      updateSummary();
+
   });
 
 
@@ -370,43 +389,74 @@ document.addEventListener('DOMContentLoaded', () => {
       pendingCommands.push(entry);
 
       addPendingLog(`[출고] ${robotName} : ${selectedItem.name} ${qty}개 → ${pinName}`);
+
+      outboundCount++;
+      updateSummary();
   });
 
   /* ============================================================================
       ⭐ 시작 버튼 → 서버로 1건 전송
   ============================================================================ */
   document.getElementById("btn_start").addEventListener("click", () => {
-    if (pendingCommands.length === 0) {
-      return alert("대기 중인 명령이 없습니다.");
-    }
-
-    const cmd = pendingCommands.shift();
-
-    const wsMsg = {
-      type: "request_stock_move",
-      payload: {
-        stock_id: cmd.stock_id,
-        robot_id: cmd.robot_id,
-        amount: cmd.amount,
-        mode: cmd.mode
+      if (pendingCommands.length === 0) {
+        return alert("대기 중인 명령이 없습니다.");
       }
-    };
 
-    ws.send(JSON.stringify(wsMsg));
+      // ⭐ 명령 대기 로그 텍스트 가져오기 (수정됨!!)
+      const logBox = document.getElementById("log_area");
+      const logs = logBox.innerText.trim();
 
-    console.log("📤 서버로 전송:", wsMsg);
+      if (logs) {
+          addJobHistoryFromText(logs);
+      }
 
-    // UI 상태 업데이트 (기존 동작 유지)
-    if (activeRobotName) {
-      ROBOT_STATUS[activeRobotName].mode = `${selectedItem.pin_name} 이동중`;
-      renderRobotCards();
-    }
+      const cmd = pendingCommands.shift();
 
-    // 대기 로그 초기화
-    document.getElementById("log_area").innerHTML = "";
+      const wsMsg = {
+        type: "request_stock_move",
+        payload: {
+          stock_id: cmd.stock_id,
+          robot_id: cmd.robot_id,
+          amount: cmd.amount,
+          mode: cmd.mode
+        }
+      };
 
-    alert("명령이 실행되었습니다.");
+      ws.send(JSON.stringify(wsMsg));
+
+      console.log("📤 서버로 전송:", wsMsg);
+
+      // UI 상태 업데이트 유지
+      if (activeRobotName) {
+        ROBOT_STATUS[activeRobotName].mode = `${selectedItem.pin_name} 이동중`;
+        renderRobotCards();
+      }
+
+      // 명령 대기 로그 초기화
+      document.getElementById("log_area").innerHTML = "";
+
+      alert("명령이 실행되었습니다.");
   });
+
+  function addJobHistoryFromText(text) {
+      const box = document.getElementById("log_text_wrapper");
+      if (!box) return;
+
+      const p = document.createElement("p");
+      p.textContent = text;
+      p.style.margin = "4px 0";
+
+      box.appendChild(p);
+
+      // 최근 10개 유지
+      while (box.children.length > 10) {
+          box.removeChild(box.firstChild);
+      }
+
+      // 맨 아래로 자동 스크롤
+      box.scrollTop = box.scrollHeight;
+  }
+
 
   /* ============================================================================
       초기 로드
