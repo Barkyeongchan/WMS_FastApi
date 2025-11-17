@@ -245,9 +245,37 @@ class ROSConnectionManager:
         self.clients: dict[str, ROSRobotConnection] = {}
 
     def connect_robot(self, name: str, ip: str):
-        if self.active_robot and self.active_robot in self.clients:
+        """로봇 연결 요청
+
+        - 같은 로봇이 이미 연결되어 있으면: 끊지 않고 활성 로봇만 변경
+        - 다른 로봇으로 바꿀 때만: 기존 active 로봇 disconnect
+        """
+        # 1) 같은 이름의 로봇이 이미 존재하는 경우
+        existing = self.clients.get(name)
+
+        # 1-1) 이미 연결되어 있으면 → 다시 연결하지 말고 active 만 바꿔줌
+        if existing and existing.connected:
+            self.active_robot = name
+            print(f"[ROS] 🟢 이미 연결된 로봇 활성화 = {name}")
+            # 대시보드/로봇 페이지에 다시 한 번 상태 쏴주기
+            existing._broadcast_status(True)
+            return
+
+        # 1-2) 객체는 있지만 끊어진 상태라면 → 재연결 시도
+        if existing and not existing.connected:
+            ok = existing.connect()
+            if ok:
+                self.active_robot = name
+                print(f"[ROS] ♻️ {name} 재연결 완료")
+            else:
+                print(f"[ROS] ❌ {name} 재연결 실패")
+            return
+
+        # 2) 처음 보는 로봇인데, 다른 active 로봇이 이미 연결되어 있으면 끊어줌
+        if self.active_robot and self.active_robot in self.clients and self.active_robot != name:
             self.clients[self.active_robot].disconnect()
 
+        # 3) 새 연결 생성
         client = ROSRobotConnection(name, ip)
         ok = client.connect()
         if ok:
@@ -256,6 +284,7 @@ class ROSConnectionManager:
             print(f"[ROS] 🟢 활성 로봇 = {name}")
         else:
             print(f"[ROS] ❌ {name} 연결 실패")
+
 
     def disconnect_robot(self, name: str):
         if name in self.clients:
