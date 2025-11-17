@@ -165,6 +165,17 @@ document.addEventListener('DOMContentLoaded', () => {
   ============================================================================ */
   ws.onmessage = (event) => {
     const msg = JSON.parse(event.data);
+    const p   = msg?.payload || {};
+    const name = p.robot_name;
+
+    if (msg.type === "robot_pose_restore") {
+        if (p && p.x != null) {
+            lastRobotPose = { x: p.x, y: p.y, theta: p.theta || 0 };
+            updateRobotMarker(lastRobotPose);
+            console.log("🔄 위치 복구 완료", lastRobotPose);
+        }
+        return;
+    }
 
     if (msg.type === "stock_update") {
         console.log("📦 재고 갱신 → 테이블 리로드");
@@ -172,25 +183,25 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    const p   = msg?.payload || {};
-    const name = p.robot_name;
-
     /* ----------------------------------------------------------
        1) robot_status 는 robot_name 없이 올 수도 있음 (WAIT)
     ---------------------------------------------------------- */
     if (msg.type === "robot_status") {
       const state = p.state || "대기중";
 
-      // 이름이 있으면 해당 로봇에 반영
       if (name && ROBOT_STATUS[name]) {
         ROBOT_STATUS[name].mode = state;
         activeRobotName = name;
       }
-      // 이름이 없으면, 현재 활성 로봇에 반영 (단일 로봇 가정)
       else if (activeRobotName && ROBOT_STATUS[activeRobotName]) {
         ROBOT_STATUS[activeRobotName].mode = state;
       }
-
+    
+      // ⭐ 로봇이 안 움직여도 마커 유지
+      if (lastRobotPose.x != null) {
+        updateRobotMarker(lastRobotPose);
+      }
+    
       renderRobotCards();
       return;
     }
@@ -203,6 +214,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (msg.type === "status") {
       r.connected = p.connected;
       r.mode = p.connected ? "대기중" : "미연결";
+        
+      // ⭐ STATUS 메시지에도 위치 유지
+      if (lastRobotPose.x != null) {
+        updateRobotMarker(lastRobotPose);
+      }
     }
 
     else if (msg.type === "battery") {

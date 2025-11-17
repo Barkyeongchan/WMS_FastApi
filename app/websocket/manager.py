@@ -7,6 +7,7 @@ from app.models.stock_model import Stock
 from app.models.pin_model import Pin
 
 _active_clients = []
+robot_status_cache = {}
 
 # 🔥 마지막 작업 정보 저장
 _last_job = {
@@ -23,13 +24,28 @@ async def register(ws: WebSocket):
     _active_clients.append(ws)
     print(f"[WS] 클라이언트 연결됨 (total={len(_active_clients)})")
 
-    # 기존 활성 로봇 상태 전송
+    # 🔥 캐싱된 로봇 상태 전송
     try:
-        from app.core.ros import ros_manager
-        active = ros_manager.ros_manager.active_robot
+        for robot_name, status in robot_status_cache.items():
+            await ws.send_json({
+                "type": "robot_status",
+                "payload": {
+                    "name": robot_name,
+                    "state": status.get("state", "대기중")
+                }
+            })
+            print(f"[WS] 상태 복구 전송 → {robot_name}: {status.get('state')}")
+    except Exception as e:
+        print("[WS] 상태 복구 오류:", e)
+
+
+    # 🔥 활성 로봇 상태 전송
+    try:
+        from app.core.ros.ros_manager import ros_manager
+        active = ros_manager.active_robot
 
         if active:
-            client = ros_manager.ros_manager.clients.get(active)
+            client = ros_manager.clients.get(active)
             if client and client.connected:
                 await ws.send_json({
                     "type": "status",
@@ -43,6 +59,22 @@ async def register(ws: WebSocket):
 
     except Exception as e:
         print("[WS] 상태 재전송 오류:", e)
+
+    # 🔥 마지막 로봇 좌표 복구 전송
+    try:
+        from app.core.ros.ros_manager import ros_manager
+        last_pose = ros_manager.last_pose   # ← 정답
+
+        if last_pose:
+            await ws.send_json({
+                "type": "robot_pose_restore",
+                "payload": last_pose
+            })
+            print("[WS] 마지막 로봇 위치 전송 완료")
+
+    except Exception as e:
+        print("[WS] last_pose 전송 오류:", e)
+
 
 
 # ======================================================
@@ -103,8 +135,8 @@ async def handle_message(ws: WebSocket, data: dict):
     # --------------------------------------------------
     if msg_type == "cmd_vel":
         try:
-            from app.core.ros import ros_manager
-            ros_manager.ros_manager.send_cmd_vel(data.get("payload") or {})
+            from app.core.ros.ros_manager import ros_manager
+            ros_manager.send_cmd_vel(data.get("payload") or {})
         except Exception as e:
             print("[WS] cmd_vel 오류:", e)
         return
@@ -114,7 +146,7 @@ async def handle_message(ws: WebSocket, data: dict):
     # --------------------------------------------------
     if msg_type == "request_stock_move":
         try:
-            from app.core.ros import ros_manager
+            from app.core.ros.ros_manager import ros_manager
 
             payload = data.get("payload") or {}
             stock_id = payload.get("stock_id")
@@ -123,13 +155,12 @@ async def handle_message(ws: WebSocket, data: dict):
 
             print(f"[WS] 📦 이동 요청 → stock_id={stock_id}, mode={mode}")
 
-            # 이동중 상태 전송 (APP용)
+            # 이동중 상태 전송
             ws_manager.broadcast({
                 "type": "robot_status",
                 "payload": {"state": "이동중"}
             })
 
-            # 숫자 변환
             try:
                 amount = int(amount)
             except:
@@ -146,13 +177,11 @@ async def handle_message(ws: WebSocket, data: dict):
                     return
 
                 x, y = [c.strip() for c in pin.coords.split(",")]
-                command = f"{mode}:{stock.name}:{x}:{y}:{amount}"
+                command = f"{pin.name}"
 
-                # ROS publish
-                ros_manager.ros_manager.send_ui_command(command)
+                ros_manager.send_ui_command(command)
                 print(f"[WS] → ROS UI 명령 전송: {command}")
 
-                # 마지막 작업 정보 저장
                 _last_job = {
                     "stock_id": stock_id,
                     "amount": amount,
@@ -168,11 +197,11 @@ async def handle_message(ws: WebSocket, data: dict):
         return
 
     # --------------------------------------------------
-    #  완료 확인(APP) → DB 반영 + WAIT
+    #  완료 확인(APP)
     # --------------------------------------------------
     if msg_type == "complete_stock_move":
         try:
-            from app.core.ros import ros_manager
+            from app.core.ros.ros_manager import ros_manager
 
             job = _last_job or {}
             stock_id = job.get("stock_id")
@@ -189,21 +218,15 @@ async def handle_message(ws: WebSocket, data: dict):
             try:
                 stock = db.query(Stock).filter(Stock.id == stock_id).first()
 
-                if not stock:
-                    print("[WS] ❌ 재고 없음")
-                else:
-                    # DB 업데이트
+                if stock:
                     if mode == "INBOUND":
-                        new_qty = stock.quantity + amount
-                    else:  # OUTBOUND
-                        new_qty = max(stock.quantity - amount, 0)
+                        stock.quantity += amount
+                    else:
+                        stock.quantity = max(stock.quantity - amount, 0)
 
-                    stock.quantity = new_qty
                     db.commit()
+                    print("[WS] ✅ 수량 업데이트 완료")
 
-                    print(f"[WS] ✅ DB 수량 업데이트 → {new_qty}")
-
-                    # ⭐⭐⭐ 대시보드 재고 갱신
                     ws_manager.broadcast({
                         "type": "stock_update",
                         "payload": {}
@@ -212,44 +235,54 @@ async def handle_message(ws: WebSocket, data: dict):
             finally:
                 db.close()
 
-            # 로봇 복귀
-            ros_manager.ros_manager.send_ui_command("WAIT")
+            ros_manager.send_ui_command("WAIT")
             print("[WS] 🚚 WAIT → 복귀 시작")
 
-            # 복귀중 상태 전송
             ws_manager.broadcast({
                 "type": "robot_status",
                 "payload": {"state": "복귀중"}
             })
 
         except Exception as e:
+            
             print("[WS] complete_stock_move 처리 오류:", e)
 
         return
-    
+
     # --------------------------------------------------
-    #  클라이언트가 요청한 로봇 상태 갱신 (이동중/작업중/복귀중)
+    #  상태 갱신 요청
     # --------------------------------------------------
     if msg_type == "robot_status":
         payload = data.get("payload") or {}
-        print(f"[WS] 상태 갱신 요청 → {payload}")
+        name = payload.get("name")
     
+        # ⭐ name 없으면 active_robot 자동 삽입
+        if not name:
+            from app.core.ros.ros_manager import ros_manager
+            name = ros_manager.active_robot
+            payload["name"] = name
+    
+        # ⭐ 캐시에 저장
+        if name:
+            robot_status_cache[name] = {
+                "state": payload.get("state", "대기중")
+            }
+            print(f"[CACHE] 로봇 상태 저장: {name} → {payload.get('state')}")
+    
+        # ⭐ 모든 클라이언트에게 브로드캐스트
         ws_manager.broadcast({
             "type": "robot_status",
             "payload": payload
         })
         return
-    
-    
-    elif msg_type == "ui_command":
+
+    # --------------------------------------------------
+    #  UI 명령
+    # --------------------------------------------------
+    if msg_type == "ui_command":
         cmd = data.get("payload", {}).get("command")
         print(f"[WS] UI 명령 수신: {cmd}")
 
-        from app.core.ros import ros_manager
-        if ros_manager.ros_manager.ui_topic:
-            ros_manager.ros_manager.ui_topic.publish(
-                roslibpy.Message({"data": cmd})
-            )
-            print(f"[ROS] 📤 /wasd_ui_command → {cmd}")
-
+        from app.core.ros.ros_manager import ros_manager
+        ros_manager.send_ui_command(cmd)
         return

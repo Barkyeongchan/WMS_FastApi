@@ -244,6 +244,9 @@ class ROSConnectionManager:
         self.active_robot: str | None = None
         self.clients: dict[str, ROSRobotConnection] = {}
 
+        # 🔥 추가: 마지막 로봇 좌표 저장
+        self.last_pose = {}
+
     def connect_robot(self, name: str, ip: str):
         """로봇 연결 요청
 

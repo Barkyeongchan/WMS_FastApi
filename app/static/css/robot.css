@@ -84,7 +84,7 @@ main {
   border-radius: 1px;
 }
 
-.robot_card {
+.robot_cards {
   background-color: #fff;
   border-radius: 10px;
   padding: 18px 20px;
@@ -124,12 +124,12 @@ main {
   margin: 20px 0;
 }
 
-.label { font-size: 1.25rem; color: #555; width: 80px; font-weight: 600;}
+.label { font-size: 1rem; color: #555; width: 70px; font-weight: 600;}
 .value { font-weight: 800; color: #2c3e50; }
 .value.small {
   min-width: 65px;
   text-align: right;
-  font-size: 1.2rem;
+  font-size: 1rem;
   font-weight: 700;
   color: #444;
 }
@@ -522,7 +522,7 @@ main {
 
 /* 위치 좌표 스타일 강화 */
 .value.position_value {
-  font-size: 1.3rem;     /* 🔥 더 크게 */
+  font-size: 1.2rem;     /* 🔥 더 크게 */
   font-weight: 600;       /* 🔥 더 굵게 */
   color: #2c3e50;         /* 진한 네이비 */
   letter-spacing: 0.5px;  /* 미세한 간격 → 고급스러움 */
