@@ -1,4 +1,10 @@
-# Spring Boot 웹서버를 FastApi 웹서버로 변환
+# 1. FastApi 서버 구축 후 ROS - 로컬 - EC2 - 웹 클라이언트 연결
+
+## 기존의 Sprong Boot 서버에서 구축된 데이터를 FastApi 서버로 이식
+
+<details>
+<summary></summary>
+<div markdown="1">
 
 ## **※ AWS EC2 클라우드를 사용해 서버를 배포함 (Ec2-Vscode.md 참고)**
 
@@ -37,6 +43,14 @@
 - Spring `resources/templates/` → FastAPI의 `Jinja2Templates`
 - 기존 JS/CSS 그대로 사용
 <br><br>
+
+6. 로컬과 WebSocket 연결
+- `/ws` 엔드포인트 생성
+- `WebSocket`을 통해 로컬과 연결
+
+7. 데이터를 웹 클라이언트에 출력
+- `ROS` → `로컬` → `EC2` → `웹 클라이언트` 순으로 전달
+- `index.html`의 원하는 위치에 출력
 
 ## 1. 환경 세팅
 
@@ -120,7 +134,7 @@ Thumbs.db
 
 ```txt
 fastapi
-uvicorn
+uvicorn[standard]
 sqlalchemy
 pydantic==1.10.24    # 버전 1로 설치 해야함
 python-dotenv
@@ -130,12 +144,13 @@ python-multipart
 requests
 mysqlclient
 jinja2
+pymysql
 ```
 
 | 패키지 | 설명 |
 |--------|-----|
 | `fastapi` | FastAPI 웹 프레임워크 |
-| `uvicorn` | ASGI 서버 (FastAPI 실행) |
+| `uvicorn[standard]` | ASGI 서버 (FastAPI 실행) |
 | `sqlalchemy` | ORM |
 | `pydantic` | FastAPI의 데이터 검증 라이브러리 (fastapi가 의존) |
 | `python-dotenv` | .env 파일 환경 변수 처리 |
@@ -145,6 +160,7 @@ jinja2
 | `requests` | HTTP 요청 라이브러리 |
 | `mysqlclient` | MySQL 드라이버 |
 | `jinja2` | 템플릿 엔진 |
+| `pymysql` | MySQL 드라이버 (Python 기반, 윈도우/리눅스 호환성 우수) |
 
 ---
 ### .env
@@ -944,3 +960,774 @@ http://127.0.0.1:8000/
 3. `index.html`접속 후, `/static`파일 로드 확인 
 
 </div></details>
+
+## 6. 로컬과 WebSocket 연결
+
+<details>
+<summary></summary>
+<div markdown="1">
+
+### `main.py`
+
+**CORS 허용과 **
+
+```python
+from fastapi import FastAPI, Request, WebSocket
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
+from app.routers import log_router
+
+app = FastAPI(title="WMS FastAPI Server", debug=settings.DEBUG)
+
+# CORS 허용 (로컬 PC나 다른 IP에서 접속 가능하게)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 정적 파일 등록 (/static 경로로 접근 가능)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# 템플릿 등록
+templates = Jinja2Templates(directory="app/templates")
+
+# 라우터 등록
+app.include_router(log_router.router)
+
+# 메인 페이지 (HTML 렌더링)
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request, "title": "WMS Dashboard"})
+
+
+# WebSocket 엔드포인트 추가
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    print("[EC2] WebSocket connected")
+    try:
+        while True:
+            data = await websocket.receive_text()
+            print(f"[RECEIVED] ← {data}")
+            await websocket.send_text(f"Echo: {data}")
+    except Exception as e:
+        print("[EC2] WebSocket disconnected", e)
+```
+
+</div></details>
+
+## 7. 데이터를 웹 클라이언트에 출력
+
+<details>
+<summary></summary>
+<div markdown="1">
+
+### 전체 흐름
+```markdown
+┌──────────────────────────────┐
+│     라즈베리파이 (ROS)         │
+│  /odom, /turtle1/pose 등 발행 │
+│  ─ rosbridge / WS ─▶         │
+└────────────┬─────────────────┘
+             │
+             ▼
+┌──────────────────────────────┐
+│        로컬 워커 (PC)         │
+│  roslibpy로 토픽 구독         │
+│  데이터 전처리 (JSON 변환)     │
+│  ─ WebSocket 송신 ─▶         │
+└────────────┬─────────────────┘
+             │
+             ▼
+┌──────────────────────────────┐
+│         EC2 FastAPI 서버      │
+│  /ws 엔드포인트로 데이터 수신    │
+│  active_connections에 등록    │
+│  ─ 모든 클라이언트에 broadcast  │
+└────────────┬─────────────────┘
+             │
+             ▼
+┌──────────────────────────────┐
+│       웹 클라이언트 (HTML)     │
+│  WebSocket 연결 후 실시간 표시  │
+└──────────────────────────────┘
+```
+---
+### EC2 서버 `app/main.py`
+
+**WebSocket 연결 관리 및 데이터 브로드캐스트**
+
+```python
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
+from app.routers import log_router
+
+app = FastAPI(title="WMS FastAPI Server", debug=settings.DEBUG)
+
+# CORS 허용 (로컬 PC나 다른 IP에서 접속 가능하게)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 정적 파일 등록 (/static 경로로 접근 가능)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# 템플릿 등록
+templates = Jinja2Templates(directory="app/templates")
+
+# 라우터 등록
+app.include_router(log_router.router)
+
+# 메인 페이지 (HTML 렌더링)
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request, "title": "WMS Dashboard"})
+
+active_connections = []
+
+# WebSocket 엔드포인트 추가
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    active_connections.append(websocket)  # 연결 추가
+    print("[EC2] WebSocket connected")
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+            print(f"[EC2] 수신 데이터 ← {data}")
+
+            # 모든 클라이언트에 브로드캐스트
+            for conn in list(active_connections):  # 복사본 사용
+                try:
+                    await conn.send_text(data)
+                except Exception:
+                    # 죽은 소켓은 제거
+                    if conn in active_connections:
+                        active_connections.remove(conn)
+
+    except WebSocketDisconnect:
+        print("[EC2] ❌ WebSocket disconnected")
+        if websocket in active_connections:
+            active_connections.remove(websocket)
+        else:
+            print("[EC2] ⚠️ 연결이 이미 제거되어 무시됨")
+```
+---
+### 로컬 `ws_client.py`
+
+**EC2 WebSocket 연결 및 데이터 전송**
+
+```python
+import websocket
+import json
+
+class WebSocketClient:
+    def __init__(self, server):
+        # EC2 서버(WebSocket) 주소를 초기화
+        self.server = server
+        self.ws = None  # WebSocket 객체 (연결 후 할당됨)
+
+    def connect(self):
+        # EC2 서버와 WebSocket 연결 시도
+        self.ws = websocket.WebSocket()
+        self.ws.connect(self.server)
+        print(f"[EC2] Connected to {self.server}")  # 연결 성공 로그 출력
+
+    def send(self, data: dict):
+        # 서버로 JSON 데이터 전송
+        try:
+            self.ws.send(json.dumps(data))  # dict → JSON 문자열로 변환 후 전송
+            print("[SEND] →", data)  # 전송 로그
+        except websocket.WebSocketConnectionClosedException:
+            # 연결이 끊어진 경우 자동 재연결 시도
+            print("[WARN] WebSocket closed, reconnecting...")
+            try:
+                self.connect()  # 재연결
+                self.ws.send(json.dumps(data))  # 재전송
+                print("[SEND-RETRY] →", data)  # 재전송 로그
+            except Exception as e:
+                # 재연결 시도 실패 시 출력
+                print("[ERROR] WebSocket send retry failed:", e)
+        except Exception as e:
+            # 전송 실패 시 예외 처리 및 에러 출력
+            print("[ERROR] WebSocket send failed:", e)
+```
+---
+### 웹 클라이언트 `static/js/main.js`
+
+**WebSocket 연결 및 실시간 데이터 표시**
+
+```js
+console.log("WMS Dashboard JS Loaded");
+
+    // EC2 WebSocket 연결 (pose 데이터 표시)
+    const ws = new WebSocket("ws://" + window.location.host + "/ws");
+
+    ws.onopen = () => {
+        console.log("[CLIENT] ✅ WebSocket connected to EC2");
+    };
+
+    ws.onmessage = (event) => {
+        console.log("[CLIENT] Received:", event.data);
+
+        try {
+            const data = JSON.parse(event.data);
+            const poseEl = document.querySelector(".log_text");
+            poseEl.innerText =
+                `X: ${data.x}, Y: ${data.y}, θ: ${data.theta}, ` +
+                `Linear: ${data.linear_velocity}, Angular: ${data.angular_velocity}`;
+        } catch {
+            console.warn("[CLIENT] Non-JSON message:", event.data);
+        }
+    };
+
+    ws.onclose = () => {
+        console.warn("[CLIENT] WebSocket disconnected");
+    };
+
+    ws.onerror = (error) => {
+        console.error("[CLIENT] WebSocket error:", error);
+    };
+```
+---
+### `index.html` 데이터 표시 위치
+```html
+<div class="log">
+    <p class="log_t">작업 내역</p>
+    <p class="log_text">작업 내역 나오는 곳</p>    <!--여기에 출력-->
+</div>
+```
+---
+### 작동 확인
+
+**1. EC2 서버 실행**
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+**2. 로컬에서 main.py 실행**
+```bash
+python main.py
+```
+**3. 웹 클라이언트 접속**
+```bash
+http://<EC2_IP>:8000
+```
+**4. 브라우저 콘솔 확인**
+```css
+[CLIENT] ✅ WebSocket connected to EC2
+```
+**5. 실시간 데이터 출력 확인**
+```
+X: 1, Y: 6, θ: -2, Linear: 0, Angular: 0
+```
+</div></details>
+</div></details>
+<br><br>
+
+# 2. 웹 클라이언트에서 ROS로 명령 송신 후 결과 재수신
+
+<details>
+<summary></summary>
+<div markdown="1">
+
+## 1. 데이터 업데이트 주기 제어
+
+<details>
+<summary></summary>
+<div markdown="1">
+
+**데이터의 송수신을 제한하여 서버의 부화를 줄임**
+
+### 로컬 `main.py`
+
+**변화 감지, 주기 제한 적용**
+
+```python
+from ros_listener import RosListener
+from ws_client import WebSocketClient
+import os
+from dotenv import load_dotenv
+import time  # 프로그램 유지용
+
+# .env 파일 로드 (환경 변수 불러오기)
+load_dotenv()
+
+# 환경 변수 설정
+ROS_HOST = os.getenv("ROS_HOST")      # ROS 브리지 서버 IP
+ROS_PORT = int(os.getenv("ROS_PORT")) # ROS 브리지 포트 (예: 9090)
+EC2_WS = os.getenv("EC2_WS")          # EC2 WebSocket 서버 주소
+
+last_send_time = 0  # 최근 전송 시각
+last_data = None    # 최근 전송 데이터
+
+def main():
+    # ROS → EC2 데이터 중계 메인 프로세스
+    
+    # EC2 WebSocket 클라이언트 연결
+    ws = WebSocketClient(EC2_WS)
+    ws.connect()
+
+    # ROS 데이터 수신 콜백
+    def on_ros_data(data):
+        global last_send_time, last_data, first_sent  # 마지막 전송 시간, 데이터 추적, 초기값 전송여부 확인
+        current_time = time.time()
+
+        # 데이터가 바뀌었거나 0.5초 이상 지났을 때만 전송
+        if data != last_data and current_time - last_send_time > 0.5:
+            ws.send(data)                  # EC2로 데이터 전송
+            last_data = data               # 최근 전송 데이터 갱신
+            last_send_time = current_time  # 최근 전송 시각 갱신
+
+    # ROS 리스너 연결 및 토픽 구독
+    ros = RosListener(ROS_HOST, ROS_PORT, callback=on_ros_data)
+    ros.connect()
+    ros.subscribe('/turtle1/pose')  # 구독할 토픽 이름
+
+    # 프로그램 종료 방지 (ROS 메시지 수신 대기)
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        pass
+
+# 직접 실행 시 main() 실행
+if __name__ == "__main__":
+    main()
+```
+---
+### EC2 `app/main.py`
+
+**클라이언트가 처음 접속 시 `init_request` 메시지를 보내면 `latest_data`를 즉시 반환**
+
+**- 초기 상태를 브라우저에 표시**
+
+```python
+latest_data = None  # 최근 수신 데이터 저장용
+
+if data == "init_request" and latest_data:
+    await websocket.send_text(latest_data)
+    print("[EC2] 초기 데이터 전송 → 클라이언트")
+    continue
+```
+
+_**전체 코드**_
+
+```python
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
+from app.routers import log_router
+
+app = FastAPI(title="WMS FastAPI Server", debug=settings.DEBUG)
+
+# CORS 허용 (로컬 PC나 다른 IP에서 접속 가능하게)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 정적 파일 등록 (/static 경로로 접근 가능)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# 템플릿 등록
+templates = Jinja2Templates(directory="app/templates")
+
+# 라우터 등록
+app.include_router(log_router.router)
+
+# 메인 페이지 (HTML 렌더링)
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request, "title": "WMS Dashboard"})
+
+active_connections = []  # 현재 연결된 클라이언트 목록
+latest_data = None       # 최근 수신한 ROS 데이터 저장
+
+# WebSocket 엔드포인트 추가
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    global latest_data
+    await websocket.accept()
+    active_connections.append(websocket)  # 연결 추가
+    print("[EC2] WebSocket connected")
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+            print(f"[EC2] 수신 데이터 ← {data}")
+
+            # 초기 데이터 요청(init_request)이 오면 최근 데이터 전송
+            if data == "init_request" and latest_data:
+                await websocket.send_text(latest_data)
+                print("[EC2] 초기 데이터 전송 → 클라이언트")
+                continue
+
+            # ROS → EC2로 들어오는 최신 데이터 저장
+            latest_data = data
+
+            # 모든 클라이언트에 브로드캐스트
+            for conn in list(active_connections):  # 복사본 사용
+                try:
+                    await conn.send_text(data)
+                except Exception:
+                    # 죽은 소켓은 제거
+                    if conn in active_connections:
+                        active_connections.remove(conn)
+
+    except WebSocketDisconnect:
+        print("[EC2] WebSocket disconnected")
+        if websocket in active_connections:
+            active_connections.remove(websocket)
+```
+---
+### EC2 `static/js/main.js`
+
+**서버에 초기 데이터를 요청하고 화면에 표시하도록 유지**
+
+```js
+ws.onopen = () => {
+    console.log("[CLIENT] ✅ WebSocket connected to EC2");
+    ws.send("init_request");  // 초기 데이터 요청
+    console.log("[CLIENT] 초기 데이터 요청 전송");
+};
+```
+
+_**전체 코드**_
+
+```js
+document.addEventListener('DOMContentLoaded', () => {
+
+    const toggleBtn = document.getElementById("togglebtn");
+    const sidebar = document.getElementById("sidebar");
+    const mainScreen = document.getElementById("main_screen");
+    const userIcon = document.getElementById("user_icon");
+    const userMenu = document.getElementById("user_menu");
+    const poseOutput = document.getElementById("pose_output"); // pose 표시 위치
+
+    // 사이드바 슬라이드
+    toggleBtn.addEventListener("click", () => {
+        sidebar.classList.toggle("closed");
+        mainScreen.classList.toggle("expanded");
+    });
+
+    // 유저 메뉴 토글
+    userIcon.addEventListener("click", () => {
+        userMenu.style.display = userMenu.style.display === "block" ? "none" : "block";
+    });
+    document.addEventListener("click", (event) => {
+        if (!userIcon.contains(event.target) && !userMenu.contains(event.target)) {
+            userMenu.style.display = "none";
+        }
+    });
+
+    console.log("WMS Dashboard JS Loaded");
+
+    // EC2 WebSocket 연결 (pose 데이터 표시)
+    const ws = new WebSocket("ws://" + window.location.host + "/ws");
+
+    // 연결 성공 시
+    ws.onopen = () => {
+        console.log("[CLIENT] ✅ WebSocket connected to EC2");
+
+        // 서버에 초기 데이터 요청
+        ws.send("init_request");
+        console.log("[CLIENT] 초기 데이터 요청 전송");
+    };
+
+    // 서버로부터 메시지 수신 시
+    ws.onmessage = (event) => {
+        console.log("[CLIENT] Received:", event.data);
+
+        try {
+            const data = JSON.parse(event.data);
+            const poseEl = document.querySelector(".log_text");
+
+            // pose 값 표시
+            poseEl.innerText =
+                `X: ${data.x}, Y: ${data.y}, θ: ${data.theta}, ` +
+                `Linear: ${data.linear_velocity}, Angular: ${data.angular_velocity}`;
+        } catch {
+            console.warn("[CLIENT] Non-JSON message:", event.data);
+        }
+    };
+
+    // 연결 종료
+    ws.onclose = () => {
+        console.warn("[CLIENT] WebSocket disconnected");
+    };
+
+    // 오류 발생 시
+    ws.onerror = (error) => {
+        console.error("[CLIENT] WebSocket error:", error);
+    };
+});
+```
+</div></details>
+
+## 웹 클라이언트 → ROS 데이터 흐름
+
+```markdown
+┌──────────────────────────────┐
+│       웹 클라이언트 (HTML)     │
+│  키보드/버튼 입력 발생          │
+│  ─ WebSocket 송신 ─▶         │
+└────────────┬─────────────────┘
+             │
+             ▼
+┌──────────────────────────────┐
+│        EC2 FastAPI 서버       │
+│  /ws 엔드포인트에서 데이터 수신  │
+│  active_connections에 등록    │
+│  ─ 로컬 워커로 브로드캐스트 ─▶  │
+└────────────┬─────────────────┘
+             │
+             ▼
+┌──────────────────────────────┐
+│         로컬 워커 (PC)         │
+│  WebSocket으로 명령 수신        │
+│  roslibpy로 /turtle1/cmd_vel 퍼블리시 │
+│  ─ ROS로 명령 전송 ─▶          │
+└────────────┬─────────────────┘
+             │
+             ▼
+┌──────────────────────────────┐
+│      라즈베리파이 (ROS)        │
+│  /turtle1/cmd_vel 토픽 구독    │
+│  로봇(거북이) 실제 이동 수행     │
+└──────────────────────────────┘
+```
+---
+### 데이터 흐름 (웹 → ROS)
+
+웹 클라이언트에서 입력한 키보드/버튼 신호가 ROS 시스템으로 전달되는 전체 과정:
+
+1. **웹 클라이언트**  
+- 사용자의 입력(방향키/버튼)을 감지  
+- JSON 형태로 WebSocket을 통해 EC2로 전송
+
+2. **EC2 FastAPI 서버**  
+- `/ws` 엔드포인트에서 메시지 수신  
+- `active_connections` 리스트에 등록된 모든 클라이언트(로컬 워커 포함)로 브로드캐스트
+
+3. **로컬 워커 (PC)**  
+- EC2에서 전송된 메시지를 WebSocket으로 수신  
+- 메시지 타입이 `"control"`일 경우 roslibpy를 통해  
+  `/turtle1/cmd_vel` 토픽에 퍼블리시
+
+4. **라즈베리파이 (ROS)**  
+- `/turtle1/cmd_vel` 토픽을 구독  
+- 거북이 시뮬레이터(turtlesim)가 실제로 움직임 수행
+
+## 메세지 포멧 단일화
+
+### 웹 클라이언트 → EC2 → 로컬 (제어)
+```json
+// 예시
+{
+  "type": "control",
+  "topic": "/turtle1/cmd_vel",
+  "linear_x": 2.0,
+  "angular_z": 1.0
+}
+```
+---
+### 로컬 → EC2 → 웹 클라이언트 (텔레메트리)
+```json
+// 예시
+{
+  "type": "turtle_pose",
+  "x": 4,
+  "y": 11,
+  "theta": 2,
+  "linear_velocity": 0,
+  "angular_velocity": 0
+}
+```
+
+## 2. 웹 → ROS 명령 송신 구조 생성
+
+<details>
+<summary></summary>
+<div markdown="1">
+
+### 웹 클라이언트 `main.js`
+
+**웹에서 방향키 입력 감지 - 제어 명령(JSON)을 EC2로 전송**
+
+```js
+// 키보드 입력 감지 (방향키로 제어)
+document.addEventListener("keydown", (event) => {
+    let cmd = null;
+
+    switch (event.key) {
+        case "ArrowUp":
+            cmd = { type: "control", command: "up" };
+            break;
+        case "ArrowDown":
+            cmd = { type: "control", command: "down" };
+            break;
+        case "ArrowLeft":
+            cmd = { type: "control", command: "left" };
+            break;
+        case "ArrowRight":
+            cmd = { type: "control", command: "right" };
+            break;
+    }
+
+    if (cmd && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(cmd));
+        console.log("[CLIENT] →", cmd);
+    }
+});
+```
+
+_**전체 코드**_
+
+```js
+document.addEventListener('DOMContentLoaded', () => {
+
+    const toggleBtn = document.getElementById("togglebtn");
+    const sidebar = document.getElementById("sidebar");
+    const mainScreen = document.getElementById("main_screen");
+    const userIcon = document.getElementById("user_icon");
+    const userMenu = document.getElementById("user_menu");
+    const poseOutput = document.getElementById("pose_output"); // pose 표시 위치
+
+    // 사이드바 슬라이드
+    toggleBtn.addEventListener("click", () => {
+        sidebar.classList.toggle("closed");
+        mainScreen.classList.toggle("expanded");
+    });
+
+    // 유저 메뉴 토글
+    userIcon.addEventListener("click", () => {
+        userMenu.style.display = userMenu.style.display === "block" ? "none" : "block";
+    });
+    document.addEventListener("click", (event) => {
+        if (!userIcon.contains(event.target) && !userMenu.contains(event.target)) {
+            userMenu.style.display = "none";
+        }
+    });
+
+    console.log("WMS Dashboard JS Loaded");
+
+    // EC2 WebSocket 연결 (pose 데이터 표시)
+    const ws = new WebSocket("ws://" + window.location.host + "/ws");
+
+    // 연결 성공 시
+    ws.onopen = () => {
+        console.log("[CLIENT] ✅ WebSocket connected to EC2");
+
+        // 서버에 초기 데이터 요청
+        ws.send("init_request");
+        console.log("[CLIENT] 초기 데이터 요청 전송");
+    };
+
+    // 서버로부터 메시지 수신 시
+    ws.onmessage = (event) => {
+        console.log("[CLIENT] Received:", event.data);
+
+        try {
+            const data = JSON.parse(event.data);
+            const poseEl = document.querySelector(".log_text");
+
+            // pose 값 표시
+            poseEl.innerText =
+                `X: ${data.x}, Y: ${data.y}, θ: ${data.theta}, ` +
+                `Linear: ${data.linear_velocity}, Angular: ${data.angular_velocity}`;
+        } catch {
+            console.warn("[CLIENT] Non-JSON message:", event.data);
+        }
+    };
+
+    // 연결 종료
+    ws.onclose = () => {
+        console.warn("[CLIENT] WebSocket disconnected");
+    };
+
+    // 오류 발생 시
+    ws.onerror = (error) => {
+        console.error("[CLIENT] WebSocket error:", error);
+    };
+
+    // 키보드 입력 감지 (방향키로 ROS 제어 명령 전송)
+    document.addEventListener("keydown", (event) => {
+        let cmd = null;
+
+        switch (event.key) {
+            case "ArrowUp":
+                cmd = { type: "control", command: "up" };
+                break;
+            case "ArrowDown":
+                cmd = { type: "control", command: "down" };
+                break;
+            case "ArrowLeft":
+                cmd = { type: "control", command: "left" };
+                break;
+            case "ArrowRight":
+                cmd = { type: "control", command: "right" };
+                break;
+        }
+
+        // WebSocket 연결이 유지 중일 때만 전송
+        if (cmd && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify(cmd));
+            console.log("[CLIENT] →", cmd);
+        }
+    });
+});
+```
+---
+### 로컬 새 파일 추가 `utils/ros_publisher.py`
+
+**명령을 감지하고 ROS로 퍼블리시**
+
+```python
+import roslibpy
+
+class RosPublisher:
+    def __init__(self, host, port):
+        self.ros = roslibpy.Ros(host=host, port=port)
+        self.ros.run()
+        print("[ROS] Connected to rosbridge")
+
+        self.pub = roslibpy.Topic(self.ros, '/turtle1/cmd_vel', 'geometry_msgs/Twist')
+
+    def publish_command(self, cmd):
+        twist = {'linear': {'x': 0.0, 'y': 0.0, 'z': 0.0},
+                 'angular': {'x': 0.0, 'y': 0.0, 'z': 0.0}}
+
+        if cmd == "up":
+            twist['linear']['x'] = 1.0
+        elif cmd == "down":
+            twist['linear']['x'] = -1.0
+        elif cmd == "left":
+            twist['angular']['z'] = 1.0
+        elif cmd == "right":
+            twist['angular']['z'] = -1.0
+
+        self.pub.publish(roslibpy.Message(twist))
+        print(f"[ROS] 퍼블리시 → {cmd}")
+```
+
