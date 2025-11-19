@@ -185,10 +185,19 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
                 overall_level = lvl
 
             if lvl == 2:
-                if ("lidar" in name or "connect" in message or "lost" in message):
+                # 🔥 모터 문제 먼저 체크
+                if ("motor" in name or "base" in name or "wheel" in name or
+                    "overcurrent" in message or "stall" in message or
+                    "overheat" in message or "velocity" in message):
+                    summary = "모터 오류"
+
+                # 🔥 센서 끊김 분리
+                elif ("lidar" in name or "connect" in message or "lost" in message):
                     summary = "센서 끊김"
+
                 else:
                     summary = "시스템 오류"
+
                 overall_level = 2
                 break
 
@@ -212,6 +221,7 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
                 "color": color
             }
         }
+
 
     # =========================================================
     # 📷 CAMERA
