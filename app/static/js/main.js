@@ -1,44 +1,39 @@
 document.addEventListener('DOMContentLoaded', () => {
   console.log("✅ WMS Dashboard JS Loaded");
 
-  /* ============================================================================
-      🔵 WebSocket 전역 선언
-  ============================================================================ */
+  /* ============================================================
+      🔵 WebSocket 연결
+  ============================================================ */
   const protocol = location.protocol === "https:" ? "wss" : "ws";
   const wsUrl = `${protocol}://${location.host}/ws`;
   const ws = new WebSocket(wsUrl);
 
-  /* ============================================================================
-      🔵 PIVOT (지도 중심)
-  ============================================================================ */
+  /* ============================================================
+      지도 보정값 + Pivot
+  ============================================================ */
   const PIVOT_X = 1.42;
   const PIVOT_Y = 1.72;
 
-  /* ============================================================================
-      🔥 지도 보정값
-  ============================================================================ */
   const OFFSET_X = -43;
   const OFFSET_Y = -5;
   const SCALE_X  = 0.55;
   const SCALE_Y  = 0.52;
 
-  /* ============================================================================
-      변수들
-  ============================================================================ */
+  /* ============================================================
+      변수
+  ============================================================ */
   const robotSelect = document.getElementById("robot_select");
   const resultBody  = document.getElementById("result_body");
   const emptyHint   = document.getElementById("empty_hint");
   const pickedName  = document.getElementById("picked_name");
 
-  const todayInboundEl = document.querySelector(".summary_item:nth-child(2) .summary_desc");
+  const todayInboundEl  = document.querySelector(".summary_item:nth-child(2) .summary_desc");
   const todayOutboundEl = document.querySelector(".summary_item:nth-child(3) .summary_desc");
-  const todayNewItemEl = document.querySelector(".summary_item:nth-child(4) .summary_desc");
+  const todayNewItemEl  = document.querySelector(".summary_item:nth-child(4) .summary_desc");
 
-
-  let inboundCount = 0;   // 오늘 입고
-  let outboundCount = 0;  // 오늘 출고
-  let newItemCount = 0;   // 신규 상품 등록 (선택)
-
+  let inboundCount = 0;
+  let outboundCount = 0;
+  let newItemCount = 0;
 
   let products = [];
   let selectedItem = null;
@@ -52,31 +47,31 @@ document.addEventListener('DOMContentLoaded', () => {
     origin: [0, 0]
   };
 
+  /* ============================================================
+      요약 현황 업데이트
+  ============================================================ */
   function updateSummary() {
-      todayInboundEl.textContent = inboundCount + "건";
+      todayInboundEl.textContent  = inboundCount + "건";
       todayOutboundEl.textContent = outboundCount + "건";
-      todayNewItemEl.textContent = newItemCount + "건";
+      todayNewItemEl.textContent  = newItemCount + "건";
   }
 
-
-  /* ============================================================================
-      ⭐ 명령 대기 로그 저장용
-  ============================================================================ */
+  /* ============================================================
+      명령 대기 로그
+  ============================================================ */
   let pendingCommands = [];
 
   function addPendingLog(text) {
     const area = document.getElementById("log_area");
-    if (!area) return;
-
     const p = document.createElement("p");
     p.textContent = text;
     p.style.margin = "4px 0";
     area.appendChild(p);
   }
 
-  /* ============================================================================
-      로봇 상태카드 초기 생성
-  ============================================================================ */
+  /* ============================================================
+      로봇 상태카드 초기화
+  ============================================================ */
   async function initRobotStatusList() {
     const res = await fetch("/robots/");
     const robots = await res.json();
@@ -97,9 +92,9 @@ document.addEventListener('DOMContentLoaded', () => {
     renderRobotCards();
   }
 
-  /* ============================================================================
-      상품/로봇 데이터
-  ============================================================================ */
+  /* ============================================================
+      데이터 로딩
+  ============================================================ */
   async function loadProducts() {
     const res = await fetch("/stocks/");
     products = await res.json();
@@ -138,7 +133,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll(".product_table tr")
           .forEach(r => r.classList.remove("selected"));
         tr.classList.add("selected");
-
         pickedName.textContent = item.name;
         selectedItem = item;
       });
@@ -146,15 +140,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* ============================================================================
+  /* ============================================================
       로봇 카드 렌더링
-  ============================================================================ */
+  ============================================================ */
   function renderRobotCards() {
     const container = document.getElementById("robot_status_list");
     container.innerHTML = "";
 
-    const sorted = Object.values(ROBOT_STATUS).sort((a, b) =>
-      Number(b.connected) - Number(a.connected)
+    const sorted = Object.values(ROBOT_STATUS).sort(
+      (a, b) => Number(b.connected) - Number(a.connected)
     );
 
     sorted.forEach(robot => {
@@ -176,65 +170,72 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* ============================================================================
-      WS 메시지 처리
-  ============================================================================ */
+  /* ============================================================
+      WebSocket 메시지 처리
+  ============================================================ */
   ws.onmessage = (event) => {
     const msg = JSON.parse(event.data);
     const p   = msg?.payload || {};
-    const name = p.robot_name;
 
+    /* -------------------------------
+        ⭐ 신규 로그 → 자동 새로고침
+    -------------------------------- */
+    if (msg.type === "new_log") {
+        loadRecentTasks();
+        loadTodaySummary();
+        return;
+    }
+
+    /* -------------------------------
+        위치 복구
+    -------------------------------- */
     if (msg.type === "robot_pose_restore") {
-        if (p && p.x != null) {
+        if (p.x != null) {
             lastRobotPose = { x: p.x, y: p.y, theta: p.theta || 0 };
             updateRobotMarker(lastRobotPose);
-            console.log("🔄 위치 복구 완료", lastRobotPose);
         }
         return;
     }
 
+    /* -------------------------------
+        재고 업데이트 → 테이블 리로드
+    -------------------------------- */
     if (msg.type === "stock_update") {
-        console.log("📦 재고 갱신 → 테이블 리로드");
-        loadProducts();   // ← DB 재조회 후 테이블 갱신
+        loadProducts();
         return;
     }
 
-    /* ----------------------------------------------------------
-       1) robot_status 는 robot_name 없이 올 수도 있음 (WAIT)
-    ---------------------------------------------------------- */
+    /* -------------------------------
+        로봇 상태 (WAIT 포함)
+    -------------------------------- */
     if (msg.type === "robot_status") {
       const state = p.state || "대기중";
+      const name = p.name || activeRobotName;
 
       if (name && ROBOT_STATUS[name]) {
         ROBOT_STATUS[name].mode = state;
         activeRobotName = name;
       }
-      else if (activeRobotName && ROBOT_STATUS[activeRobotName]) {
-        ROBOT_STATUS[activeRobotName].mode = state;
-      }
-    
-      // ⭐ 로봇이 안 움직여도 마커 유지
-      if (lastRobotPose.x != null) {
-        updateRobotMarker(lastRobotPose);
-      }
-    
+
+      if (lastRobotPose.x != null) updateRobotMarker(lastRobotPose);
+
       renderRobotCards();
       return;
     }
 
-    // 나머지 타입은 기존 로직 그대로
+    /* -------------------------------
+        나머지 타입 → 기존 로직
+    -------------------------------- */
+    const name = p.robot_name;
     if (!name || !ROBOT_STATUS[name]) return;
+
     const r = ROBOT_STATUS[name];
     activeRobotName = name;
 
     if (msg.type === "status") {
       r.connected = p.connected;
       r.mode = p.connected ? "대기중" : "미연결";
-        
-      // ⭐ STATUS 메시지에도 위치 유지
-      if (lastRobotPose.x != null) {
-        updateRobotMarker(lastRobotPose);
-      }
+      if (lastRobotPose.x != null) updateRobotMarker(lastRobotPose);
     }
 
     else if (msg.type === "battery") {
@@ -256,50 +257,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     else if (msg.type === "robot_arrived") {
       const pin = p.pin;
-
-      if (pin === "WAIT") {
-        // 복귀 완료
-        r.mode = "대기중";
-      } else {
-        // 목적지 도착 → App에서 확인 누르기 전까지는 '작업중'
-        r.mode = "작업중";
-      }
+      r.mode = pin === "WAIT" ? "대기중" : "작업중";
     }
-
 
     renderRobotCards();
   };
 
   ws.onclose = () => {
-    console.log("[WS] Dashboard lost. Reconnecting…");
     setTimeout(() => location.reload(), 1500);
   };
 
-  /* ============================================================================
+  /* ============================================================
       지도 로딩
-  ============================================================================ */
+  ============================================================ */
   async function loadMap() {
-    try {
-      const res = await fetch("/map/info");
-      const info = await res.json();
-
-      mapInfo = info;
-
-      const img = document.getElementById("map_image");
-      img.src = info.image;
-
-    } catch (err) {
-      console.error("지도 로딩 실패:", err);
-    }
+    const res = await fetch("/map/info");
+    mapInfo = await res.json();
+    document.getElementById("map_image").src = mapInfo.image;
   }
 
-  /* ============================================================================
-      좌표 변환
-  ============================================================================ */
+  /* ============================================================
+      ROS → 화면 픽셀 변환
+  ============================================================ */
   function rosToPixel(x, y) {
     const img = document.getElementById("map_image");
     const container = document.getElementById("map_container");
-    if (!img.complete) return {x:0,y:0};
+    if (!img.complete) return { x: 0, y: 0 };
 
     const iw = img.naturalWidth;
     const ih = img.naturalHeight;
@@ -335,58 +318,47 @@ document.addEventListener('DOMContentLoaded', () => {
     marker.style.display = "block";
     marker.style.left = `${p.x - 10}px`;
     marker.style.top  = `${p.y - 10}px`;
-    marker.style.transform = `rotate(${robot.theta * 180/Math.PI}deg)`;
+    marker.style.transform = `rotate(${robot.theta * 180 / Math.PI}deg)`;
   }
 
-  /* ============================================================================
-      ⭐ 입고 / 출고 → 대기 로그 저장 기능
-  ============================================================================ */
-
+  /* ============================================================
+      입고/출고 버튼
+  ============================================================ */
   document.getElementById("btn_in").addEventListener("click", () => {
       if (!selectedItem) return alert("상품을 선택하세요!");
       if (!robotSelect.value) return alert("로봇을 선택하세요!");
 
       const qty = Number(document.getElementById("delta_qty").value);
-
-      // 🔥 로봇 이름 가져오기
       const robotName = robotSelect.selectedOptions[0].textContent.split(" ")[0];
       const pinName = selectedItem.pin_name;
 
-      const entry = {
-        stock_id: selectedItem.id,
-        amount: qty,
-        robot_name: robotName,  // 여기 저장됨
-        mode: "INBOUND"
-      };
-
-      pendingCommands.push(entry);
+      pendingCommands.push({
+          stock_id: selectedItem.id,
+          amount: qty,
+          robot_name: robotName,
+          mode: "INBOUND"
+      });
 
       addPendingLog(`[입고] ${robotName} : ${selectedItem.name} ${qty}개 → ${pinName}`);
 
       inboundCount++;
       updateSummary();
-
   });
-
 
   document.getElementById("btn_out").addEventListener("click", () => {
       if (!selectedItem) return alert("상품을 선택하세요!");
       if (!robotSelect.value) return alert("로봇을 선택하세요!");
 
       const qty = Number(document.getElementById("delta_qty").value);
-
-      // 🔥 로봇 이름 가져오기
       const robotName = robotSelect.selectedOptions[0].textContent.split(" ")[0];
       const pinName = selectedItem.pin_name;
 
-      const entry = {
-        stock_id: selectedItem.id,
-        amount: qty,
-        robot_name: robotName,
-        mode: "OUTBOUND"
-      };
-
-      pendingCommands.push(entry);
+      pendingCommands.push({
+          stock_id: selectedItem.id,
+          amount: qty,
+          robot_name: robotName,
+          mode: "OUTBOUND"
+      });
 
       addPendingLog(`[출고] ${robotName} : ${selectedItem.name} ${qty}개 → ${pinName}`);
 
@@ -394,77 +366,68 @@ document.addEventListener('DOMContentLoaded', () => {
       updateSummary();
   });
 
-  /* ============================================================================
-      ⭐ 시작 버튼 → 서버로 1건 전송
-  ============================================================================ */
+  /* ============================================================
+      ⭐ 시작 버튼 → 서버로 1건만 전송
+  ============================================================ */
   document.getElementById("btn_start").addEventListener("click", () => {
-      if (pendingCommands.length === 0) {
-        return alert("대기 중인 명령이 없습니다.");
-      }
 
-      // ⭐ 명령 대기 로그 텍스트 가져오기 (수정됨!!)
-      const logBox = document.getElementById("log_area");
-      const logs = logBox.innerText.trim();
-
-      if (logs) {
-          addJobHistoryFromText(logs);
-      }
+      if (pendingCommands.length === 0)
+          return alert("대기 중인 명령이 없습니다.");
 
       const cmd = pendingCommands.shift();
 
-      const wsMsg = {
-        type: "request_stock_move",
-        payload: {
-          stock_id: cmd.stock_id,
-          robot_id: cmd.robot_id,
-          amount: cmd.amount,
-          mode: cmd.mode
-        }
-      };
+      ws.send(JSON.stringify({
+          type: "request_stock_move",
+          payload: {
+              stock_id: cmd.stock_id,
+              amount: cmd.amount,
+              mode: cmd.mode
+          }
+      }));
 
-      ws.send(JSON.stringify(wsMsg));
-
-      console.log("📤 서버로 전송:", wsMsg);
-
-      // UI 상태 업데이트 유지
-      if (activeRobotName) {
-        ROBOT_STATUS[activeRobotName].mode = `${selectedItem.pin_name} 이동중`;
-        renderRobotCards();
-      }
-
-      // 명령 대기 로그 초기화
       document.getElementById("log_area").innerHTML = "";
-
       alert("명령이 실행되었습니다.");
   });
 
-  function addJobHistoryFromText(text) {
-      const box = document.getElementById("log_text_wrapper");
-      if (!box) return;
+  /* ============================================================
+      DB에서 최근 로그 가져오기
+  ============================================================ */
+  async function loadRecentTasks() {
+    const box = document.getElementById("log_text_wrapper");
+    const res = await fetch("/logs/recent-tasks");
+    const data = await res.json();
 
-      const p = document.createElement("p");
-      p.textContent = text;
-      p.style.margin = "4px 0";
-
-      box.appendChild(p);
-
-      // 최근 10개 유지
-      while (box.children.length > 10) {
-          box.removeChild(box.firstChild);
-      }
-
-      // 맨 아래로 자동 스크롤
-      box.scrollTop = box.scrollHeight;
+    box.innerHTML = "";
+    data.forEach(t => {
+      const line = document.createElement("div");
+      line.className = "recent_task_line";
+      line.textContent =
+        `[${t.time}] ${t.robot} : ${t.stock} ${t.qty}개 ${t.type} → ${t.pin}`;
+      box.appendChild(line);
+    });
   }
 
+  /* ============================================================
+      오늘 요약 불러오기
+  ============================================================ */
+  async function loadTodaySummary() {
+    const res = await fetch("/logs/today-summary");
+    const data = await res.json();
 
-  /* ============================================================================
-      초기 로드
-  ============================================================================ */
+    todayInboundEl.textContent  = data.inbound + "건";
+    todayOutboundEl.textContent = data.outbound + "건";
+    todayNewItemEl.textContent  = data.created + "건";
+  }
+
+  /* ============================================================
+      초기 로딩
+  ============================================================ */
   (async () => {
     await loadProducts();
     await loadRobots();
     await initRobotStatusList();
     await loadMap();
+    await loadRecentTasks();
+    await loadTodaySummary();
   })();
 });

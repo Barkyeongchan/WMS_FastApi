@@ -91,17 +91,20 @@ def update_stock(stock_id: int, update_data: StockUpdate, db: Session = Depends(
     if not s:
         raise HTTPException(status_code=404, detail="Stock not found")
 
+    # ---- 기존 값 저장 ----
     old_name = s.name
     old_qty = s.quantity
     old_category_id = s.category_id
     old_pin_id = s.pin_id
 
+    # ---- 업데이트 적용 ----
     for key, value in update_data.dict(exclude_unset=True).items():
         setattr(s, key, value)
 
     db.commit()
     db.refresh(s)
 
+    # ---- 새 값 로드 ----
     s = (
         db.query(Stock)
         .options(joinedload(Stock.category), joinedload(Stock.pin))
@@ -115,19 +118,33 @@ def update_stock(stock_id: int, update_data: StockUpdate, db: Session = Depends(
     new_pin = s.pin.name if s.pin else "-"
 
     changed_fields = []
+
+    # ---- 이름 변경 ----
     if old_name != new_name:
         changed_fields.append(f"이름 '{old_name}' → '{new_name}'")
+
+    # ---- 수량 변경 ----
     if old_qty != new_qty:
         changed_fields.append(f"수량 {old_qty} → {new_qty}")
-    if old_category_id != s.category_id:
-        changed_fields.append("카테고리 변경")
-    if old_pin_id != s.pin_id:
-        changed_fields.append("위치 변경")
 
+    # ---- 카테고리 변경 ----
+    if old_category_id != s.category_id:
+        old_cat = db.query(Category).filter(Category.id == old_category_id).first()
+        old_cat_name = old_cat.name if old_cat else "-"
+        changed_fields.append(f"카테고리 {old_cat_name} → {new_cat}")
+
+    # ---- 위치 변경 ----
+    if old_pin_id != s.pin_id:
+        old_pin = db.query(Pin).filter(Pin.id == old_pin_id).first()
+        old_pin_name = old_pin.name if old_pin else "-"
+        changed_fields.append(f"위치 {old_pin_name} → {new_pin}")
+
+    # ---- 로그 action 생성 ----
     action_txt = "상품 수정"
     if changed_fields:
         action_txt += f" ({', '.join(changed_fields)})"
 
+    # ---- 로그 저장 ----
     log_crud.create_log(
         db,
         LogCreate(

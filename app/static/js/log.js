@@ -20,19 +20,72 @@ document.addEventListener("DOMContentLoaded", () => {
     const name = log.stock_name || "-";
     const qty = log.quantity ?? 0;
     const action = log.action || "";
+    const robot = log.robot_name || "-";
 
-    // 상품 관련
+    /* -----------------------------
+       🟦 상품 CRUD 관련
+    ------------------------------*/
+
+    // 상품 등록
     if (action.startsWith("상품 등록")) {
-      return `[${time}] ${pin}에 ${name} ${qty}개를 등록했습니다.`;
-    }
-    if (action.startsWith("상품 수정")) {
-      return `[${time}] ${pin}의 ${name} 정보를 수정했습니다. (${action.replace("상품 수정", "").trim()})`;
-    }
-    if (action.startsWith("상품 삭제")) {
-      return `[${time}] ${pin}의 ${name}을(를) 삭제했습니다.`;
+      return `[${time}] ${pin}에 '${name}' ${qty}개를 등록했습니다.`;
     }
 
-    // 카테고리 관련
+    // 상품 삭제
+    if (action.startsWith("상품 삭제")) {
+      return `[${time}] ${pin}의 '${name}'을(를) 삭제했습니다.`;
+    }
+
+    // 상품 수정
+    if (action.startsWith("상품 수정")) {
+
+      // 🔥 백엔드 문자열 정규화
+      let detail = action
+        .replace("상품 수정", "")
+        .replace(":", "")
+        .replace(/[()]/g, "")
+        .trim();
+
+      console.log("🔥 DETAIL:", detail, "| ACTION:", action);
+
+      /* ---------- 수량 변경 ---------- */
+      if (detail.startsWith("수량")) {
+        const m = detail.match(/수량\s+(\d+)\s*→\s*(\d+)/);
+        if (m) {
+          return `[${time}] 사용자가 '${name}' 수량을 변경했습니다. (${m[1]} → ${m[2]})`;
+        }
+      }
+
+      /* ---------- 이름 변경 ---------- */
+      if (detail.startsWith("이름") || detail.startsWith("상품명")) {
+        const m = detail.match(/(이름|상품명)\s+(.+)\s*→\s*(.+)/);
+        if (m) {
+          return `[${time}] 사용자가 '${name}' 상품명을 변경했습니다. (${m[2]} → ${m[3]})`;
+        }
+      }
+
+      /* ---------- 카테고리 변경 ---------- */
+      if (detail.startsWith("카테고리")) {
+        const m = detail.match(/카테고리\s+(.+)\s*→\s*(.+)/);
+        if (m) {
+          return `[${time}] 사용자가 '${name}' 카테고리를 변경했습니다. (${m[1]} → ${m[2]})`;
+        }
+      }
+
+      /* ---------- 위치 변경 ---------- */
+      if (detail.startsWith("위치")) {
+        const m = detail.match(/위치\s+(.+)\s*→\s*(.+)/);
+        if (m) {
+          return `[${time}] 사용자가 '${name}' 위치를 변경했습니다. (${m[1]} → ${m[2]})`;
+        }
+      }
+
+      return `[${time}] 사용자가 '${name}' 정보를 수정했습니다. (${detail})`;
+    }
+
+    /* -----------------------------
+       🟧 카테고리 CRUD
+    ------------------------------*/
     if (action.startsWith("카테고리 등록")) {
       return `[${time}] 카테고리 '${category}'을 등록했습니다.`;
     }
@@ -40,7 +93,9 @@ document.addEventListener("DOMContentLoaded", () => {
       return `[${time}] 카테고리 '${category}'을 삭제했습니다.`;
     }
 
-    // 핀 관련
+    /* -----------------------------
+       🟩 핀 CRUD
+    ------------------------------*/
     if (action.startsWith("핀 등록")) {
       return `[${time}] 위치 '${pin}'을 등록했습니다.`;
     }
@@ -48,7 +103,45 @@ document.addEventListener("DOMContentLoaded", () => {
       return `[${time}] 위치 '${pin}'을 삭제했습니다.`;
     }
 
-    // 기본값
+    /* ============================================================
+       🔵 대시보드 로봇 입/출고 + 도착 + 복귀
+    ============================================================ */
+
+    if (action.startsWith("입고 시작")) {
+      return `[${time}] 로봇 ${robot}이/가 '${name}' ${qty}개 입고를 시작했습니다. (목표 위치: ${pin})`;
+    }
+
+    if (action.startsWith("출고 시작")) {
+      return `[${time}] 로봇 ${robot}이/가 '${name}' ${qty}개 출고를 시작했습니다. (목표 위치: ${pin})`;
+    }
+
+    if (action.startsWith("도착")) {
+      return `[${time}] 로봇 ${robot}이/가 ${pin} 도착`;
+    }
+
+    if (action.startsWith("입고 완료")) {
+      const m = action.match(/입고 완료\s*\((\d+)\s*→\s*(\d+)\)/);
+      if (m) return `[${time}] 입고 완료 (${m[1]} → ${m[2]})`;
+      return `[${time}] 입고 완료`;
+    }
+
+    if (action.startsWith("출고 완료")) {
+      const m = action.match(/출고 완료\s*\((\d+)\s*→\s*(\d+)\)/);
+      if (m) return `[${time}] 출고 완료 (${m[1]} → ${m[2]})`;
+      return `[${time}] 출고 완료`;
+    }
+
+    if (action.startsWith("복귀 시작")) {
+      return `[${time}] 로봇 ${robot}이/가 대기 위치로 복귀를 시작했습니다.`;
+    }
+
+    if (action.startsWith("복귀 완료")) {
+      return `[${time}] 로봇 ${robot} 복귀 완료`;
+    }
+
+    /* -----------------------------
+       🟥 기본값
+    ------------------------------*/
     return `[${time}] ${action} (${pin} / ${category} / ${name} / ${qty})`;
   }
 
@@ -65,7 +158,6 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // 최신순 정렬
       data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
       data.forEach((log) => {
@@ -78,7 +170,8 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("✅ 텍스트 로그 렌더링 완료");
     } catch (err) {
       console.error("❌ 로그 로드 실패:", err);
-      logList.innerHTML = `<p style="color:red;">❌ 로그 데이터를 불러오는 중 오류가 발생했습니다.</p>`;
+      logList.innerHTML =
+        `<p style="color:red;">❌ 로그 데이터를 불러오는 중 오류가 발생했습니다.</p>`;
     }
   }
 

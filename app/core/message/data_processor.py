@@ -76,8 +76,23 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
     # =========================================================
     elif topic_name in ['/battery', '/battery_state']:
         raw_percentage = msg.get('percentage', 0.0)
+
+        # 0~1 값이면 % 변환
         if 0.0 <= raw_percentage <= 1.0:
             raw_percentage *= 100.0
+
+        voltage = msg.get('voltage', 0.0)
+
+        # 🔥 최소 실제 배터리 기준 (27% 이하 = 0% 취급)
+        MIN_REAL = 27.0
+        MAX_REAL = 100.0
+
+        # 🔥 표시용 보정 계산
+        if raw_percentage <= MIN_REAL:
+            display_pct = 0
+        else:
+            display_pct = (raw_percentage - MIN_REAL) / (MAX_REAL - MIN_REAL) * 100
+            display_pct = max(0, min(100, display_pct))  # 안전한 0~100 범위 고정
 
         status_map = {
             0: "Unknown",
@@ -94,12 +109,13 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
             "payload": {
                 "robot_name": robot_name,
                 "timestamp": timestamp,
-                "voltage": round(msg.get('voltage', 0.0), 2),
+                "voltage": round(voltage, 2),
                 "current": round(msg.get('current', 0.0), 3),
-                "percentage": round(raw_percentage, 2),
+                "percentage": round(display_pct, 2),   # ← 🔥 웹으로 보내는 값은 보정된 값
                 "status": status
             }
         }
+
 
     # =========================================================
     # 🚗 CMD VEL

@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from app.models.log_model import Log
 from app.schemas.log_schema import LogCreate, LogUpdate
+from app.websocket.manager import ws_manager
 
 
 # READ-ALL 전체 로그 조회
@@ -14,12 +15,21 @@ def get_log_by_id(db: Session, log_id: int):
 
 
 # CREATE 새로운 로그 데이터 추가
-def create_log(db: Session, log: LogCreate):
-    db_log = Log(**log.dict())   # Pydantic 모델(LogCreate)을 SQLAlchemy 객체로 변환
-    db.add(db_log)               # 세션에 추가
-    db.commit()                  # 변경사항 저장
-    db.refresh(db_log)           # DB 반영된 최신 상태로 갱신
-    return db_log
+def create_log(db, log_data):
+    new_log = Log(**log_data.dict())
+    db.add(new_log)
+    db.commit()
+    db.refresh(new_log)
+
+    # 🔥 새로운 로그 생성 → 대시보드에 즉시 알림
+    ws_manager.broadcast({
+        "type": "new_log",
+        "payload": {
+            "id": new_log.id
+        }
+    })
+
+    return new_log
 
 
 # UPDATE 로그 데이터 수정
