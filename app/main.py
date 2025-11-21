@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
 from app.core.config import settings
+
+# 기존 라우터들
 from app.routers.stock_router import router as stock_router
 from app.routers.robot_router import router as robot_router
 from app.routers.log_router import router as log_router
@@ -13,6 +15,9 @@ from app.routers.category_router import router as category_router
 from app.routers.pin_router import router as pin_router
 from app.routers.page_router import router as page_router
 from app.routers.map_router import router as map_router
+
+# 🔥 CSV 라우터 추가 (유일한 변경점)
+from app.routers.stock_csv_router import router as stock_csv_router
 
 from app.websocket.manager import register, unregister, handle_message
 from app.core.database import Base, engine
@@ -24,6 +29,7 @@ import json
 
 app = FastAPI(title="WMS FastAPI Server", debug=settings.DEBUG)
 
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -32,10 +38,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 정적 파일
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
-# 라우터 등록
+# --------------------------------
+# 🔥 라우터 등록 (기존 + CSV 추가)
+# --------------------------------
 app.include_router(page_router)
 app.include_router(stock_router)
 app.include_router(robot_router)
@@ -44,13 +53,23 @@ app.include_router(category_router)
 app.include_router(pin_router)
 app.include_router(map_router)
 
+# 🔥 CSV 기능 추가
+# /stock/csv/upload
+# /stock/csv/template
+app.include_router(stock_csv_router, prefix="/stock")
 
+
+# --------------------------------
+# 기본 페이지
+# --------------------------------
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-# WebSocket Endpoint
+# --------------------------------
+# WebSocket
+# --------------------------------
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
@@ -68,7 +87,6 @@ async def websocket_endpoint(websocket: WebSocket):
                 print("[WS] ❌ JSON parsing 실패")
                 continue
 
-            # 🔥 여기서 모든 메시지 중앙 처리
             await handle_message(websocket, msg)
 
     except WebSocketDisconnect:
@@ -76,7 +94,9 @@ async def websocket_endpoint(websocket: WebSocket):
         print("[WS] 연결 해제 ❌")
 
 
-# 서버 이벤트 훅
+# --------------------------------
+# 서버 이벤트
+# --------------------------------
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)

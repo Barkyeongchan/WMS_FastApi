@@ -157,32 +157,30 @@ document.addEventListener("DOMContentLoaded", () => {
       const name = document.querySelector(".pin_name_input").value.trim();
       const xVal = document.querySelector(".pin_x_input").value.trim();
       const yVal = document.querySelector(".pin_y_input").value.trim();
-    
+
       if (!name) return alert("위치명을 입력하세요.");
       if (!xVal || !yVal) return alert("좌표(X,Y)를 입력하세요.");
-    
+
       const coords = `${xVal},${yVal}`;
-    
+
       const res = await fetch("/pins/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, coords }),
       });
-    
+
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         return alert(err.detail || "위치 추가 실패");
       }
-    
-      // 입력 칸 초기화
+
       document.querySelector(".pin_name_input").value = "";
       document.querySelector(".pin_x_input").value = "";
       document.querySelector(".pin_y_input").value = "";
-    
+
       loadPins();
     });
   }
-  
 
   if (pinDel) {
     pinDel.addEventListener("click", async () => {
@@ -223,12 +221,10 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest(".product_add .dropdown")) {
-      document
-        .querySelectorAll(".product_add .dropdown .dropdown_menu")
-        .forEach((m) => (m.style.display = "none"));
-    }
+  document.addEventListener("click", () => {
+    document
+      .querySelectorAll(".product_add .dropdown .dropdown_menu")
+      .forEach((m) => (m.style.display = "none"));
   });
 
   // ---------- 상품 등록 ----------
@@ -238,19 +234,25 @@ document.addEventListener("DOMContentLoaded", () => {
       const qty = Number(qtyInput.value);
       const category_id = Number(cateBtn.dataset.id || 0);
       const pin_id = Number(pinBtn.dataset.id || 0);
-      if (!name || !qty || !category_id || !pin_id)
+
+      if (!name || !qty || !category_id || !pin_id) {
         return alert("모두 입력/선택하세요.");
+      }
+
       await fetch("/stocks/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, quantity: qty, category_id, pin_id }),
       });
+
       nameInput.value = "";
       qtyInput.value = "";
       cateBtn.textContent = "카테고리";
       pinBtn.textContent = "위치";
+
       delete cateBtn.dataset.id;
       delete pinBtn.dataset.id;
+
       loadProducts();
     });
   }
@@ -260,17 +262,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const btn = e.target.closest("button");
     if (!btn) return;
 
-    // 기본 삭제
+    // 삭제
     if (btn.classList.contains("delete_btn")) {
       const checked = tbody.querySelectorAll("input:checked");
       if (!checked.length) return alert("삭제할 상품을 선택하세요.");
+
       for (const cb of checked) {
         await fetch(`/stocks/${cb.dataset.id}`, { method: "DELETE" });
       }
+
       return loadProducts();
     }
 
-    // 수정 모드 진입
+    // 수정 모드
     if (btn.classList.contains("edit_btn")) {
       const checked = tbody.querySelectorAll("input:checked");
       if (!checked.length) return alert("수정할 상품을 선택하세요.");
@@ -285,6 +289,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const id = cb.dataset.id;
         const product = products.find((p) => p.id == id);
         if (!product) continue;
+
         tr.innerHTML = `
           <td><input type="checkbox" data-id="${id}" checked /></td>
           <td>${id}</td>
@@ -333,18 +338,22 @@ document.addEventListener("DOMContentLoaded", () => {
       for (const cb of edited) {
         const tr = cb.closest("tr");
         const id = cb.dataset.id;
+
         const name = tr.querySelector(".edit_name").value.trim();
         const quantity = Number(tr.querySelector(".edit_qty").value);
         const category_id = Number(tr.querySelector(".edit_category").value);
         const pin_id = Number(tr.querySelector(".edit_pin").value);
+
         await fetch(`/stocks/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, quantity, category_id, pin_id }),
         });
       }
+
       alert("✅ 수정 완료");
       await loadProducts();
+
       listButtons.innerHTML = `
         <button class="edit_btn">수정</button>
         <button class="delete_btn">삭제</button>
@@ -356,9 +365,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btn.classList.contains("now_delete_btn")) {
       const checked = tbody.querySelectorAll("input:checked");
       if (!checked.length) return alert("삭제할 상품을 선택하세요.");
+
       for (const cb of checked) {
         await fetch(`/stocks/${cb.dataset.id}`, { method: "DELETE" });
       }
+
       await loadProducts();
       listButtons.innerHTML = `
         <button class="edit_btn">수정</button>
@@ -381,4 +392,59 @@ document.addEventListener("DOMContentLoaded", () => {
   loadProducts();
   loadCategories();
   loadPins();
+
+  // ----------------------------------------------------
+  // 🔥 CSV 업로드 기능 (유일한 신규 추가 부분)
+  // ----------------------------------------------------
+  window.uploadStockCsv = function () {
+    const fileInput = document.getElementById("csvFileInput");
+    const statusText = document.getElementById("csvStatus");
+
+    if (!fileInput || !fileInput.files.length) {
+      if (statusText) {
+        statusText.textContent = "CSV 파일을 선택해주세요.";
+        statusText.style.color = "red";
+      } else {
+        alert("CSV 파일을 선택해주세요.");
+      }
+      return;
+    }
+
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+
+    if (statusText) {
+      statusText.textContent = "업로드 중...";
+      statusText.style.color = "black";
+    }
+
+    fetch("/stock/csv/upload", {
+      method: "POST",
+      body: formData,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("업로드 실패");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (statusText) {
+          statusText.textContent =
+            "업로드 완료! (" + (data.processed_rows ?? 0) + "건 처리됨)";
+          statusText.style.color = "green";
+        }
+        loadProducts();
+      })
+      .catch((error) => {
+        console.error(error);
+        if (statusText) {
+          statusText.textContent = "에러 발생: " + error.message;
+          statusText.style.color = "red";
+        } else {
+          alert("에러 발생: " + error.message);
+        }
+      });
+  };
 });
