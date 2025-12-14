@@ -1,16 +1,22 @@
-# FastAPI 로컬 서버 구축 및 ROS → 웹 클라이언트 실시간 연결  
+# FastAPI 기반 WMS 통합 서버 (ROS·DB·WebSocket·Web UI)  
 
 ## 1️⃣ 개요  
 
 ### 전체 흐름  
 
-ROS → Local FastAPI (roslibpy 통합) → WebClient(JavaScript)
+ROS(rosbridge) → FastAPI 통합 서버(로컬 실행) → Web UI(JavaScript)
 
 - EC2, RDS, 중계 프로그램 없이 **하나의 FastAPI 서버**만으로 ROS·DB·WebSocket·UI 통합
 - 인터넷 연결 없이도 완전 동작 (오프라인 시뮬레이션 가능)
-- 구조 단순화, 유지보수 용이성, 지연 최소화  
+- 구조 단순화, 유지보수 용이성, 지연 최소화
 
+### 담당 역할
 
+- FastAPI 서버 구조 설계 및 REST API 라우팅 구성
+- WebSocket 실시간 브로드캐스트/상태 캐시 복구/메시지 처리 로직 구현
+- roslibpy 기반 rosbridge 연동(토픽 구독, cmd_vel·UI 명령 퍼블리시) 구현
+- MariaDB(MySQL) ORM 모델링 및 CRUD/로그 기록 흐름 구성
+- Web UI 대시보드 연동(재고/로봇 상태/작업 로그/지도 마커 실시간 동기화)
 
 ## 2️⃣ 폴더 구조  
 
@@ -94,27 +100,23 @@ pip install -r requirements.txt
 - `roslibpy` : rosbridge(WebSocket) 연결
 - `pydantic==1.10.24` : FastAPI와 호환되는 데이터 검증(현재 프로젝트 기준)
 
-
-
 ## 5️⃣ FastAPI 핵심 구성  
 
 | 파일 / 디렉터리 | 역할 |
 |-----------------|------|
-| core/config.py | 환경 변수 로드 및 전역 설정 |
+| core/config.py | 환경 변수 로드 및 전역 설정 관리 |
 | core/database.py | SQLAlchemy DB 엔진 및 세션 관리 |
 | models/* | DB 테이블 ORM 모델 정의 |
-| schemas/* | API 요청/응답 스키마(Pydantic) |
-| crud/* | DB CRUD 함수(조회/생성/수정/삭제) |
-| services/* | 비즈니스 로직 계층(작업 처리/규칙) |
+| schemas/* | API 요청·응답 데이터 스키마(Pydantic) |
+| crud/* | DB CRUD 로직 (조회 / 생성 / 수정 / 삭제) |
+| services/* | 비즈니스 로직 계층 (작업 규칙, 처리 흐름) |
 | routers/* | REST API 엔드포인트 구성 |
-| websocket/manager.py | WebSocket 연결 관리 및 브로드캐스트 |
+| websocket/manager.py | WebSocket 연결 관리, 상태 캐시, 실시간 브로드캐스트 |
 | core/ros/ros_manager.py | ROS 연결 상태 관리 및 rosbridge 연동 |
-| core/message/* | ROS ↔ 서버 메시지 표준화 및 가공 |
-| static/* | 프론트 정적 리소스(CSS/JS/이미지/맵) |
-| templates/* | Jinja2 HTML 템플릿 |
-| main.py | FastAPI 서버 엔트리포인트 |
-
-
+| core/message/* | ROS 수신 데이터 → 서버 내부 표준 메시지 변환 |
+| static/* | 프론트엔드 정적 리소스 (JS 기반 대시보드, CSS, 지도 이미지) |
+| templates/* | Jinja2 기반 서버 렌더링 HTML 템플릿 |
+| main.py | FastAPI 서버 엔트리포인트 (라우터·WS·DB·ROS 라이프사이클 관리) |
 
 ## 6️⃣ 주요 코드 (핵심) 
 
@@ -174,9 +176,8 @@ Base = declarative_base()
 
 ### app/core/ros/ros_manager.py
 
-> 단일 로봇 rosbridge 연결 + 토픽 구독 + UI 명령 퍼블리시
-<br>
-실제 코드에는 연결 모니터링/재연결/해제 처리까지 포함되어 있음 (README에서는 핵심 흐름만 발췌)
+> 단일 로봇 rosbridge 연결 + 토픽 구독 + UI 명령 퍼블리시  
+> 실제 코드에는 연결 모니터링/재연결/해제 처리까지 포함되어 있음 (README에서는 핵심 흐름만 발췌)
 
 ```python
 import threading
@@ -295,9 +296,8 @@ ros_manager = ROSConnectionManager()
 
 ### app/websocket/manager.py
 
-> 서버 내부 캐시 복구 + 브로드캐스트 + 핵심 메시지 처리
-<br>
-처리 메시지 타입 # cmd_vel / request_stock_move / complete_stock_move / robot_status / ui_command
+> 서버 내부 캐시 복구 + 브로드캐스트 + 핵심 메시지 처리  
+> 처리 메시지 타입 # cmd_vel / request_stock_move / complete_stock_move / robot_status / ui_command
 
 
 ```python
@@ -554,11 +554,75 @@ def on_shutdown():
         ros_manager.disconnect_robot(ros_manager.active_robot)
 ```
 
+### app/static/js/main.js
+
+> Web UI 메인 로직  
+> WebSocket 실시간 수신 + REST 초기 로딩 + 사용자 명령 전송  
+> (로봇 상태, 재고, 작업 로그, 지도 마커 등 화면 동기화)
+
+```javascript
+document.addEventListener("DOMContentLoaded", () => {
+  // WS 연결
+  const protocol = location.protocol === "https:" ? "wss" : "ws";
+  const ws = new WebSocket(`${protocol}://${location.host}/ws`);
+
+  // REST 초기 로딩
+  loadProducts();
+  loadRobots();
+  loadRecentTasks();
+  loadTodaySummary();
+  loadMap();
+
+  // WS 수신 처리
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    const p = msg.payload || {};
+
+    // 로그 갱신 트리거
+    if (msg.type === "new_log") {
+      loadRecentTasks();
+      loadTodaySummary();
+      return;
+    }
+
+    // 재고 갱신 트리거
+    if (msg.type === "stock_update") {
+      loadProducts();
+      return;
+    }
+
+    // 로봇 상태 UI 반영
+    if (msg.type === "robot_status") {
+      updateRobotState(p);
+      return;
+    }
+
+    // ROS 텔레메트리 UI 반영
+    if (["status", "battery", "odom", "amcl_pose"].includes(msg.type)) {
+      updateRobotTelemetry(msg.type, p);
+      return;
+    }
+
+    // 마지막 위치 복구
+    if (msg.type === "robot_pose_restore") {
+      restoreRobotPose(p);
+      return;
+    }
+  };
+
+  // 입고/출고 요청 전송
+  bindStockButtons(ws);
+});
+
+// 상세 구현(지도 변환, 렌더링, 큐 처리 등)은 app/static/js/main.js 참고
+```
+
 ## 7️⃣ 실행
 
 ### 서버 실행
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# 배포/시연시 --reload 제거
 ```
 
 ### 접속
