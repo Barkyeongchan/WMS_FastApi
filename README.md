@@ -8,14 +8,14 @@ FastAPI를 기반으로 REST API와 WebSocket을 제공하며,
 
 현재 시스템은 **클라우드 없이 로컬 환경**에서 동작
 
-## 1. 프로젝트 개요
+## 1️⃣ 프로젝트 개요
 
 - 웹 클라이언트에서 재고 입·출고 작업 요청
 - 서버에서 작업 요청을 관리하고 로봇에 전달
 - ROS(rosbridge)를 통해 로봇 상태 및 센서 데이터 수신
 - WebSocket을 통해 웹 UI에 실시간 상태 반영
 
-## 2. 전체 시스템 구조
+## 2️⃣ 전체 시스템 구조
 
 ```text
 Web Client
@@ -38,7 +38,7 @@ ROS Robot / Simulator
   - 로봇 제어
   - 센서 및 상태 데이터 송신
 
-## 3. 서버 아키텍처
+## 3️⃣ 서버 아키텍처
 
 - **FastAPI**
   - 재고 / 로봇 / 로그 REST API
@@ -58,7 +58,7 @@ ROS Robot / Simulator
   - SQLAlchemy ORM 사용
   - Alembic 마이그레이션 관리
 
-## 4. 디렉터리 구조
+## 4️⃣ 디렉터리 구조
 
 ```text
 app/
@@ -88,7 +88,7 @@ app/
 └── main.py               # FastAPI 엔트리포인트
 ```
 
-## 5. 실행 방법
+## 5️⃣ 실행 방법
 
 ### 1) 가상환경 생성 및 활성화
 
@@ -138,7 +138,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 - Web UI: `http://localhost:8000/`
 - Swagger: `http://localhost:8000/docs`
 
-## 6. 주요 기능
+## 6️⃣ 주요 기능
 
 - 재고 입고 / 출고 관리
 - 로봇 작업 명령 요청
@@ -147,7 +147,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 - 로봇 위치, 속도, 배터리 상태 실시간 수신
 - WebSocket 기반 UI 실시간 동기화
 
-## 7. WebSocket & ROS 연동
+## 7️⃣ WebSocket & ROS 연동
 
 ### ROS Listener
 - `/odom`
@@ -166,7 +166,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 - 로봇 상태, 작업 결과, 로그 이벤트 실시간 전송
 - 연결된 모든 클라이언트에 브로드캐스트
 
-## 8. 개발 환경
+## 8️⃣ 개발 환경
 
 - Python 3.10
 - FastAPI
