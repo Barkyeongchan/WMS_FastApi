@@ -1,11 +1,9 @@
 import time
 import math
 
-# -----------------------------
-# ✓ Quaternion → Yaw 변환 함수
-# -----------------------------
+
+# Quaternion -> yaw(rad) 변환
 def quaternion_to_yaw(q):
-    """Quaternion → yaw(rad) 변환"""
     x = q.get('x', 0.0)
     y = q.get('y', 0.0)
     z = q.get('z', 0.0)
@@ -16,17 +14,11 @@ def quaternion_to_yaw(q):
     return math.atan2(siny, cosy)
 
 
-# =========================================================
-#                   ROS 데이터 처리기
-# =========================================================
+# ROS 토픽 데이터를 WebSocket 전송용 JSON으로 변환
 def process_ros_data(topic_name, msg, robot_name="unknown"):
-    """ROS 토픽 데이터 → WebSocket 전송용 JSON 변환"""
-
     timestamp = time.strftime("%Y-%m-%dT%H:%M:%S")
 
-    # =========================================================
-    # 🦾 1. ODOM (속도 + 상대 위치)
-    # =========================================================
+    # ODOM: 속도 + 상대 위치
     if topic_name == '/odom':
         pose = msg['pose']['pose']
         twist = msg['twist']['twist']
@@ -51,9 +43,7 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
             }
         }
 
-    # =========================================================
-    # 🧭 2. AMCL POSE (전역 위치)
-    # =========================================================
+    # AMCL POSE: 전역 위치
     elif topic_name == '/amcl_pose':
         pose = msg['pose']['pose']
         ori = pose["orientation"]
@@ -66,33 +56,30 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
                 "timestamp": timestamp,
                 "x": round(pose['position']['x'], 3),
                 "y": round(pose['position']['y'], 3),
-                "theta": theta,                 # ← 추가됨 (rad)
+                "theta": theta,
                 "orientation": ori
             }
         }
 
-    # =========================================================
-    # 🔋 BATTERY
-    # =========================================================
+    # BATTERY: 배터리 상태 (보정 퍼센트)
     elif topic_name in ['/battery', '/battery_state']:
         raw_percentage = msg.get('percentage', 0.0)
 
-        # 0~1 값이면 % 변환
+        # 0~1 범위면 % 변환
         if 0.0 <= raw_percentage <= 1.0:
             raw_percentage *= 100.0
 
         voltage = msg.get('voltage', 0.0)
 
-        # 🔥 최소 실제 배터리 기준 (27% 이하 = 0% 취급)
+        # 실제 배터리 기준 보정
         MIN_REAL = 27.0
         MAX_REAL = 100.0
 
-        # 🔥 표시용 보정 계산
         if raw_percentage <= MIN_REAL:
             display_pct = 0
         else:
             display_pct = (raw_percentage - MIN_REAL) / (MAX_REAL - MIN_REAL) * 100
-            display_pct = max(0, min(100, display_pct))  # 안전한 0~100 범위 고정
+            display_pct = max(0, min(100, display_pct))
 
         status_map = {
             0: "Unknown",
@@ -111,18 +98,16 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
                 "timestamp": timestamp,
                 "voltage": round(voltage, 2),
                 "current": round(msg.get('current', 0.0), 3),
-                "percentage": round(display_pct, 2),   # ← 🔥 웹으로 보내는 값은 보정된 값
+                "percentage": round(display_pct, 2),
                 "status": status
             }
         }
 
-
-    # =========================================================
-    # 🚗 CMD VEL
-    # =========================================================
+    # CMD_VEL: 수동 제어 속도
     elif topic_name == '/cmd_vel':
         linear = msg['linear']
         angular = msg['angular']
+
         return {
             "type": "cmd_vel",
             "payload": {
@@ -133,9 +118,7 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
             }
         }
 
-    # =========================================================
-    # 🧍 BASE LINK
-    # =========================================================
+    # BASE_LINK: 로봇 기준 좌표
     elif topic_name == '/base_link':
         pose = msg['pose']
         ori = pose['orientation']
@@ -152,15 +135,14 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
             }
         }
 
-    # =========================================================
-    # 🗺 NAV PATH
-    # =========================================================
+    # NAV: 경로 포인트
     elif topic_name == '/nav':
         path = msg.get('poses', [])
         simplified = [
             {"x": p['pose']['position']['x'], "y": p['pose']['position']['y']}
             for p in path
         ]
+
         return {
             "type": "nav",
             "payload": {
@@ -170,9 +152,7 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
             }
         }
 
-    # =========================================================
-    # 🎮 TELEOP KEY
-    # =========================================================
+    # TELEOP KEY: 키 입력
     elif topic_name == '/teleop_key':
         return {
             "type": "teleop_key",
@@ -183,9 +163,7 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
             }
         }
 
-    # =========================================================
-    # 🧩 DIAGNOSTICS
-    # =========================================================
+    # DIAGNOSTICS: 시스템 상태 요약
     elif topic_name == '/diagnostics':
         status_list = msg.get('status', []) or []
 
@@ -201,16 +179,14 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
                 overall_level = lvl
 
             if lvl == 2:
-                # 🔥 모터 문제 먼저 체크
-                if ("motor" in name or "base" in name or "wheel" in name or
+                if (
+                    "motor" in name or "base" in name or "wheel" in name or
                     "overcurrent" in message or "stall" in message or
-                    "overheat" in message or "velocity" in message):
+                    "overheat" in message or "velocity" in message
+                ):
                     summary = "모터 오류"
-
-                # 🔥 센서 끊김 분리
-                elif ("lidar" in name or "connect" in message or "lost" in message):
+                elif "lidar" in name or "connect" in message or "lost" in message:
                     summary = "센서 끊김"
-
                 else:
                     summary = "시스템 오류"
 
@@ -238,23 +214,7 @@ def process_ros_data(topic_name, msg, robot_name="unknown"):
             }
         }
 
-
-    # =========================================================
-    # 📷 CAMERA
-    # =========================================================
-    elif topic_name == '/camera':
-        return {
-            "type": "camera",
-            "payload": {
-                "robot_name": robot_name,
-                "timestamp": timestamp,
-                "data": msg.get('data', '')
-            }
-        }
-
-    # =========================================================
-    # ⚙ OTHER
-    # =========================================================
+    # 처리되지 않은 토픽
     else:
         print(f"[WARN] 처리되지 않은 토픽: {topic_name}")
         return None

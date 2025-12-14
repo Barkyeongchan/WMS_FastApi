@@ -1,4 +1,4 @@
-/* ---------------- 상품 등록 ---------------- */
+/* # 상품 페이지 전체 레이아웃 */
 .product {
   display: flex;
   flex-direction: column;
@@ -7,6 +7,7 @@
   overflow: visible;
 }
 
+/* # 상품 등록 상단 박스 */
 .product_add {
   background-color: white;
   padding: 20px;
@@ -23,6 +24,7 @@
   overflow: visible;
 }
 
+/* # 상품 등록 input/button 공통 */
 .product_add input,
 .product_add button {
   height: 35px;
@@ -32,11 +34,12 @@
   font-size: 14px;
 }
 
+/* # 상품명/수량 입력 폭 */
 .input_item {
   width: 150px;
 }
 
-/* 버튼 */
+/* # 공통 버튼: 추가 */
 .add_btn {
   background-color: #407185;
   color: white;
@@ -48,6 +51,7 @@
   background-color: #2e5563;
 }
 
+/* # 공통 버튼: 삭제 */
 .delete_btn {
   background-color: #919191;
   color: white;
@@ -59,14 +63,14 @@
   background-color: #707070;
 }
 
-/* ---------------- 드롭다운 ---------------- */
+/* # 드롭다운 래퍼 */
 .dropdown {
   position: relative;
   display: inline-block;
   z-index: 10;
 }
 
-/* ✅ 드롭다운 버튼 */
+/* # 드롭다운 버튼 공통 */
 .dropdown_cate,
 .dropdown_pin {
   background-color: #ffffff;
@@ -90,7 +94,7 @@
   box-shadow: 0 0 4px rgba(64, 113, 133, 0.3);
 }
 
-/* 화살표 표시 */
+/* # 드롭다운 화살표 표시 */
 .dropdown_cate::after,
 .dropdown_pin::after {
   content: "▼";
@@ -103,7 +107,7 @@
   pointer-events: none;
 }
 
-/* ✅ 드롭다운 메뉴 */
+/* # 드롭다운 메뉴 박스 */
 .dropdown_menu {
   display: none;
   position: absolute;
@@ -111,47 +115,52 @@
   left: 0;
   background-color: #fff;
   border: 1px solid #ccc;
-  border-radius: 8px;                 /* 살짝 더 부드러운 곡선 */
+  border-radius: 8px;
   min-width: 100%;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   z-index: 999;
   overflow: hidden;
   animation: dropdownFade 0.2s ease;
-  max-height: 260px;                  /* 항목 많을 때 스크롤 */
+  max-height: 260px;
   overflow-y: auto;
 }
 
-/* ✅ 드롭다운 메뉴 항목 — 텍스트 스타일 개선 */
+/* # 드롭다운 메뉴 항목 */
 .dropdown_menu p {
   margin: 0;
-  padding: 10px 14px;                 /* 위아래 여백으로 간격 확보 */
+  padding: 10px 14px;
   cursor: pointer;
-  font-size: 13.5px;                  /* 입력 컴포넌트와 밸런스 */
-  color: #2f3b42;                     /* 덜 빡센 다크 그레이 */
+  font-size: 13.5px;
+  color: #2f3b42;
   white-space: nowrap;
   line-height: 1.4;
-  letter-spacing: -0.2px;             /* 가독성 보정 */
+  letter-spacing: -0.2px;
   transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
-  user-select: none;                  /* 드래그 방지 */
+  user-select: none;
   background-color: #ffffff;
 }
+
+/* # 드롭다운 항목 구분선 */
 .dropdown_menu p + p {
-  border-top: 1px solid #f3f4f6;      /* 항목 사이 미세 구분선 */
+  border-top: 1px solid #f3f4f6;
 }
+
+/* # 드롭다운 항목 hover */
 .dropdown_menu p:hover {
-  background-color: #e8f2f8;          /* 은은한 파랑 계열 하이라이트 */
-  color: #1a4d63;                     /* 텍스트도 살짝 진하게 */
-  font-weight: 600;                   /* hover 시만 더 굵게 */
-  transform: translateX(1px);         /* 반응감 */
+  background-color: #e8f2f8;
+  color: #1a4d63;
+  font-weight: 600;
+  transform: translateX(1px);
 }
-/* 선택 고정(원하면 JS에서 .active 붙이면 유지됨) */
+
+/* # 드롭다운 항목 선택 표시 */
 .dropdown_menu p.active {
   background-color: #dfeff6;
   color: #1f566c;
   font-weight: 600;
 }
 
-/* 드롭다운 메뉴 스크롤바 */
+/* # 드롭다운 메뉴 스크롤바 */
 .dropdown_menu::-webkit-scrollbar {
   width: 8px;
 }
@@ -163,18 +172,18 @@
   background: #a9bcc6;
 }
 
-/* ✅ 드롭다운 표시 시 */
+/* # 드롭다운 열림 상태 */
 .dropdown.active .dropdown_menu {
   display: block;
 }
 
-/* 부드러운 등장 애니메이션 */
+/* # 드롭다운 등장 애니메이션 */
 @keyframes dropdownFade {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ---------------- 상품 리스트 + 오른쪽 패널 ---------------- */
+/* # 상품 리스트 + 우측 패널 2단 레이아웃 */
 .product_section {
   display: flex;
   gap: 20px;
@@ -182,7 +191,7 @@
   height: 100%;
 }
 
-/* ✅ 상품 리스트 */
+/* # 상품 리스트 카드 */
 .product_list {
   flex: 4;
   background-color: white;
@@ -193,7 +202,7 @@
   flex-direction: column;
 }
 
-/* 상단 제목 영역 */
+/* # 리스트 상단 제목/버튼 라인 */
 .list_title_wrapper {
   display: flex;
   justify-content: space-between;
@@ -204,6 +213,7 @@
   gap: 12px;
 }
 
+/* # 리스트 제목 텍스트 */
 .list_title {
   font-weight: 700;
   font-size: 1.1rem;
@@ -211,6 +221,7 @@
   margin: 0;
 }
 
+/* # 리스트 우측 버튼 영역 */
 .list_buttons button {
   margin-left: 8px;
   padding: 6px 12px;
@@ -221,6 +232,8 @@
   color: white;
   transition: background 0.2s;
 }
+
+/* # 리스트 버튼: 수정 */
 .edit_btn {
   background-color: #407185;
 }
@@ -228,9 +241,7 @@
   background-color: #2e5563;
 }
 
-/* ============================
-   🔹 상품 리스트 (log.css 통합)
-============================ */
+/* # 재고 테이블 래퍼 */
 .stock_table_wrapper {
   flex: 1;
   border: 1px solid #ddd;
@@ -240,6 +251,7 @@
   flex-direction: column;
 }
 
+/* # 재고 테이블 기본 */
 .stock_table {
   width: 100%;
   border-collapse: collapse;
@@ -248,6 +260,7 @@
   table-layout: fixed;
 }
 
+/* # 재고 테이블 헤더(sticky) */
 .stock_table thead {
   background-color: #f0f1f3;
   color: #333;
@@ -257,12 +270,14 @@
   z-index: 2;
 }
 
+/* # 재고 테이블 바디 스크롤 */
 .stock_table_wrapper tbody {
   display: block;
   overflow-y: auto;
   height: 550px;
 }
 
+/* # 재고 테이블 행 레이아웃 고정 */
 .stock_table thead tr,
 .stock_table tbody tr {
   display: table;
@@ -270,6 +285,7 @@
   table-layout: fixed;
 }
 
+/* # 재고 테이블 셀 */
 .stock_table th,
 .stock_table td {
   padding: 12px;
@@ -280,44 +296,38 @@
   text-overflow: ellipsis;
 }
 
-.stock_table tbody tr:nth-child(odd) {
-  background-color: #ffffff;
-}
-.stock_table tbody tr:nth-child(even) {
-  background-color: #f7f7f7;
-}
+/* # 재고 테이블 줄무늬 */
+.stock_table tbody tr:nth-child(odd) { background-color: #ffffff; }
+.stock_table tbody tr:nth-child(even) { background-color: #f7f7f7; }
 
-.stock_table tbody tr:hover {
-  background-color: #eaf0ff;
-}
+/* # 재고 테이블 hover */
+.stock_table tbody tr:hover { background-color: #eaf0ff; }
 
+/* # 재고 테이블 체크박스 */
 .stock_table input[type="checkbox"] {
   transform: scale(1.2);
   cursor: pointer;
 }
 
-.stock_table_wrapper tbody::-webkit-scrollbar {
-  width: 8px;
-}
-.stock_table_wrapper tbody::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
+/* # 재고 테이블 스크롤바 */
+.stock_table_wrapper tbody::-webkit-scrollbar { width: 8px; }
+.stock_table_wrapper tbody::-webkit-scrollbar-track { background: #f1f1f1; }
 .stock_table_wrapper tbody::-webkit-scrollbar-thumb {
   background-color: #b5b5b5;
   border-radius: 4px;
   transition: background 0.3s;
 }
-.stock_table_wrapper tbody::-webkit-scrollbar-thumb:hover {
-  background-color: #7a7a7a;
-}
+.stock_table_wrapper tbody::-webkit-scrollbar-thumb:hover { background-color: #7a7a7a; }
 
-/* 검색창 */
+/* # 검색창 영역 */
 .search_bar {
   flex: 1;
   display: flex;
   justify-content: center;
   border: none;
 }
+
+/* # 검색창 input */
 .search_bar input {
   width: 240px;
   height: 32px;
@@ -327,13 +337,15 @@
   font-size: 14px;
   transition: all 0.2s ease;
 }
+
+/* # 검색창 포커스 */
 .search_bar input:focus {
   outline: none;
   border-color: #407185;
   box-shadow: 0 0 3px rgba(64, 113, 133, 0.3);
 }
 
-/* 오른쪽 관리 패널 */
+/* # 우측 관리 패널 레이아웃 */
 .side_panel {
   flex: 1;
   display: flex;
@@ -341,7 +353,7 @@
   gap: 20px;
 }
 
-/* 공통 패널 */
+/* # 우측 패널 공통 카드 */
 .category_panel,
 .pin_panel {
   background-color: white;
@@ -354,6 +366,7 @@
   align-items: stretch;
 }
 
+/* # 우측 패널 제목 */
 .category_panel h3,
 .pin_panel h3 {
   margin-top: 0;
@@ -364,7 +377,7 @@
   padding-bottom: 5px;
 }
 
-/* 입력창 + 버튼 */
+/* # 우측 패널 입력창 */
 .category_panel input,
 .pin_panel input {
   height: 35px;
@@ -375,12 +388,15 @@
   margin-bottom: 8px;
 }
 
+/* # 버튼 행 레이아웃 */
 .button_row {
   display: flex;
   gap: 8px;
   width: 100%;
   margin-bottom: 12px;
 }
+
+/* # 버튼 행 버튼 공통 */
 .button_row button {
   flex: 1;
   height: 35px;
@@ -391,20 +407,14 @@
   color: #fff;
   transition: background 0.2s;
 }
-.button_row .add_btn {
-  background-color: #407185;
-}
-.button_row .add_btn:hover {
-  background-color: #2e5563;
-}
-.button_row .delete_btn {
-  background-color: #919191;
-}
-.button_row .delete_btn:hover {
-  background-color: #707070;
-}
 
-/* 리스트 스크롤 */
+/* # 버튼 행: 추가/삭제 색상 */
+.button_row .add_btn { background-color: #407185; }
+.button_row .add_btn:hover { background-color: #2e5563; }
+.button_row .delete_btn { background-color: #919191; }
+.button_row .delete_btn:hover { background-color: #707070; }
+
+/* # 카테고리/핀 리스트 스크롤 */
 .category_list,
 .pin_list {
   list-style: none;
@@ -415,7 +425,7 @@
   max-height: 200px;
 }
 
-/* ✅ 리스트 항목 수평 정렬 */
+/* # 카테고리/핀 리스트 항목 */
 .category_list li,
 .pin_list li {
   display: flex;
@@ -427,6 +437,8 @@
   line-height: 1.5;
   cursor: default;
 }
+
+/* # 리스트 체크박스 정렬 */
 .category_list li input[type="checkbox"],
 .pin_list li input[type="checkbox"] {
   transform: scale(1.1);
@@ -436,13 +448,15 @@
   position: relative;
   top: 0;
 }
+
+/* # 리스트 hover */
 .category_list li:hover,
 .pin_list li:hover {
   background-color: #f8f8f8;
   transition: background 0.2s ease;
 }
 
-/* 스크롤바 */
+/* # 리스트 스크롤바 */
 .category_list::-webkit-scrollbar,
 .pin_list::-webkit-scrollbar {
   width: 8px;
@@ -461,20 +475,21 @@
   background-color: #7a7a7a;
 }
 
+/* # 드롭다운 선택표시 강제 해제 */
 .dropdown_menu p.active {
   background: none !important;
   color: #333 !important;
   font-weight: normal !important;
 }
 
-/* X, Y만 가로 정렬 */
+/* # 핀 좌표 입력: X/Y 가로 정렬 */
 .pin_xy_row {
   display: flex;
   gap: 6px;
   width: 100%;
 }
 
-/* X, Y 동일 크기 */
+/* # 핀 좌표 input 공통 */
 .pin_xy_row input {
   flex: 1;
   height: 32px;
@@ -485,9 +500,7 @@
   box-sizing: border-box;
 }
 
-/* ======================
-   CSV 업로드 패널 동일 카드 스타일 적용
-====================== */
+/* # CSV 업로드 패널 카드 */
 .csv_panel {
   background-color: white;
   border-radius: 6px;
@@ -499,7 +512,7 @@
   align-items: stretch;
 }
 
-/* 제목 라인 */
+/* # CSV 패널 제목 */
 .csv_panel h3 {
   margin-top: 0;
   margin-bottom: 10px;
@@ -509,14 +522,14 @@
   padding-bottom: 5px;
 }
 
-/* 도움 텍스트 */
+/* # CSV 도움말 텍스트 */
 .csv_help_text {
   font-size: 13px;
   color: #666;
   margin-bottom: 10px;
 }
 
-/* 파일 선택 줄 */
+/* # CSV 파일 선택 줄 */
 .csv_file_row {
   display: flex;
   gap: 8px;
@@ -524,11 +537,12 @@
   margin-bottom: 12px;
 }
 
+/* # CSV 파일 input */
 .csv_file_row input[type="file"] {
   flex: 1;
 }
 
-/* 업로드 상태 표시 */
+/* # CSV 업로드 상태 텍스트 */
 .csv_status_text {
   margin-top: 8px;
   font-size: 13px;

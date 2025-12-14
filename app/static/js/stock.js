@@ -1,9 +1,9 @@
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("✅ stock.js loaded");
+  console.log("stock.js loaded");
 
-  // ---------- 공통 참조 ----------
+  // 공통 DOM 요소 참조
   const tbody = document.querySelector(".stock_table.body tbody");
-  if (!tbody) return console.warn("❌ tbody not found on this page.");
+  if (!tbody) return console.warn("tbody not found on this page.");
 
   const addBox = document.querySelector(".product_add");
   const nameInput = addBox?.querySelector("input[type='text']");
@@ -27,9 +27,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const listButtons = document.querySelector(".list_buttons");
 
+  // 상품 캐시
   let products = [];
 
-  // ---------- 상품 테이블 ----------
+  // 상품 목록 로딩
   async function loadProducts() {
     try {
       const res = await fetch("/stocks/");
@@ -41,6 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // 상품 테이블 렌더링
   function renderTable(data) {
     tbody.innerHTML = "";
     data.forEach((item) => {
@@ -57,7 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ---------- 검색 ----------
+  // 검색 입력 처리
   const searchInput = document.getElementById("searchInput");
   if (searchInput) {
     searchInput.addEventListener("input", (e) => {
@@ -71,7 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ---------- 카테고리 ----------
+  // 카테고리 목록 로딩
   async function loadCategories() {
     try {
       const res = await fetch("/categories/");
@@ -86,6 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
           )
           .join("");
       }
+
       if (cateMenu) {
         cateMenu.innerHTML = data
           .map((c) => `<p data-id="${c.id}">${c.name}</p>`)
@@ -96,38 +99,45 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // 카테고리 추가 처리
   if (cateAdd && cateInput) {
     cateAdd.addEventListener("click", async () => {
       const name = cateInput.value.trim();
       if (!name) return alert("카테고리명을 입력하세요.");
+
       const res = await fetch("/categories/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
       });
+
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         return alert(err.detail || "카테고리 추가 실패");
       }
+
       cateInput.value = "";
       loadCategories();
     });
   }
 
+  // 카테고리 삭제 처리
   if (cateDel) {
     cateDel.addEventListener("click", async () => {
       const checked = cateList?.querySelectorAll("input:checked") || [];
       if (!checked.length) return alert("삭제할 카테고리를 선택하세요.");
+
       for (const cb of checked) {
         const id = cb.dataset.id;
         await fetch(`/categories/${id}`, { method: "DELETE" });
       }
+
       loadCategories();
       loadProducts();
     });
   }
 
-  // ---------- 핀 ----------
+  // 핀 목록 로딩
   async function loadPins() {
     try {
       const res = await fetch("/pins/");
@@ -142,6 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
           )
           .join("");
       }
+
       if (pinMenu) {
         pinMenu.innerHTML = data
           .map((p) => `<p data-id="${p.id}">${p.name}</p>`)
@@ -152,6 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // 핀 추가 처리
   if (pinAdd) {
     pinAdd.addEventListener("click", async () => {
       const name = document.querySelector(".pin_name_input").value.trim();
@@ -182,20 +194,23 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // 핀 삭제 처리
   if (pinDel) {
     pinDel.addEventListener("click", async () => {
       const checked = pinList?.querySelectorAll("input:checked") || [];
       if (!checked.length) return alert("삭제할 위치를 선택하세요.");
+
       for (const cb of checked) {
         const id = cb.dataset.id;
         await fetch(`/pins/${id}`, { method: "DELETE" });
       }
+
       loadPins();
       loadProducts();
     });
   }
 
-  // ---------- 드롭다운 ----------
+  // 드롭다운 토글 및 선택 처리
   document.querySelectorAll(".product_add .dropdown").forEach((dropdown) => {
     const button = dropdown.querySelector(".dropdown_cate, .dropdown_pin");
     const menu = dropdown.querySelector(".dropdown_menu");
@@ -203,11 +218,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     button.addEventListener("click", (e) => {
       e.stopPropagation();
+
       document
         .querySelectorAll(".product_add .dropdown .dropdown_menu")
         .forEach((m) => {
           if (m !== menu) m.style.display = "none";
         });
+
       const isOpen = menu.style.display === "block";
       menu.style.display = isOpen ? "none" : "block";
     });
@@ -215,19 +232,21 @@ document.addEventListener("DOMContentLoaded", () => {
     menu.addEventListener("click", (e) => {
       const item = e.target.closest("p");
       if (!item) return;
+
       button.textContent = item.textContent;
       button.dataset.id = item.dataset.id;
       menu.style.display = "none";
     });
   });
 
+  // 바깥 클릭 시 드롭다운 닫기
   document.addEventListener("click", () => {
     document
       .querySelectorAll(".product_add .dropdown .dropdown_menu")
       .forEach((m) => (m.style.display = "none"));
   });
 
-  // ---------- 상품 등록 ----------
+  // 상품 등록 처리
   if (addBtn && nameInput && qtyInput && cateBtn && pinBtn) {
     addBtn.addEventListener("click", async () => {
       const name = nameInput.value.trim();
@@ -257,12 +276,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ---------- 이벤트 위임: 수정·삭제 ----------
+  // 수정/삭제 이벤트 위임 처리
   listButtons?.addEventListener("click", async (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
 
-    // 삭제
     if (btn.classList.contains("delete_btn")) {
       const checked = tbody.querySelectorAll("input:checked");
       if (!checked.length) return alert("삭제할 상품을 선택하세요.");
@@ -274,7 +292,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return loadProducts();
     }
 
-    // 수정 모드
     if (btn.classList.contains("edit_btn")) {
       const checked = tbody.querySelectorAll("input:checked");
       if (!checked.length) return alert("수정할 상품을 선택하세요.");
@@ -306,9 +323,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 .join("")}
             </select>
           </td>
-          <td><input type="number" class="edit_qty" value="${
-            product.quantity
-          }" min="0"/></td>
+          <td><input type="number" class="edit_qty" value="${product.quantity}" min="0"/></td>
           <td>
             <select class="edit_pin">
               ${pins
@@ -332,9 +347,9 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // 수정 완료
     if (btn.classList.contains("confirm_edit_btn")) {
       const edited = tbody.querySelectorAll("input:checked");
+
       for (const cb of edited) {
         const tr = cb.closest("tr");
         const id = cb.dataset.id;
@@ -351,7 +366,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      alert("✅ 수정 완료");
+      alert("수정 완료");
       await loadProducts();
 
       listButtons.innerHTML = `
@@ -361,7 +376,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // 수정 중 삭제
     if (btn.classList.contains("now_delete_btn")) {
       const checked = tbody.querySelectorAll("input:checked");
       if (!checked.length) return alert("삭제할 상품을 선택하세요.");
@@ -371,6 +385,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       await loadProducts();
+
       listButtons.innerHTML = `
         <button class="edit_btn">수정</button>
         <button class="delete_btn">삭제</button>
@@ -378,9 +393,9 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // 취소
     if (btn.classList.contains("cancel_btn")) {
       await loadProducts();
+
       listButtons.innerHTML = `
         <button class="edit_btn">수정</button>
         <button class="delete_btn">삭제</button>
@@ -388,14 +403,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // ---------- 초기 로드 ----------
+  // 초기 데이터 로딩
   loadProducts();
   loadCategories();
   loadPins();
 
-  // ----------------------------------------------------
-  // 🔥 CSV 업로드 기능 (유일한 신규 추가 부분)
-  // ----------------------------------------------------
+  // CSV 업로드 함수 노출
   window.uploadStockCsv = function () {
     const fileInput = document.getElementById("csvFileInput");
     const statusText = document.getElementById("csvStatus");
@@ -424,9 +437,7 @@ document.addEventListener("DOMContentLoaded", () => {
       body: formData,
     })
       .then((response) => {
-        if (!response.ok) {
-          throw new Error("업로드 실패");
-        }
+        if (!response.ok) throw new Error("업로드 실패");
         return response.json();
       })
       .then((data) => {

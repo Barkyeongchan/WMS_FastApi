@@ -1,4 +1,3 @@
-# app/crud/stock_crud.py
 from sqlalchemy.orm import Session
 from app.models.stock_model import Stock
 from app.schemas.stock_schema import StockCreate, StockUpdate

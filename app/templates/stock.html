@@ -21,7 +21,6 @@
     </div>
 
     <div id="main_screen" class="main_screen">
-
       <div class="main_body">
         <div class="product">
 
@@ -44,18 +43,22 @@
           <div class="product_section">
             <div class="product_list">
               <div class="list_title_wrapper">
+                <!-- 리스트 타이틀 -->
                 <p class="list_title">상품 리스트</p>
 
+                <!-- 검색 -->
                 <div class="search_bar">
                   <input type="text" id="searchInput" placeholder="상품명 또는 카테고리 검색..." />
                 </div>
 
+                <!-- 액션 버튼 -->
                 <div class="list_buttons">
                   <button class="edit_btn">수정</button>
                   <button class="delete_btn">삭제</button>
                 </div>
               </div>
 
+              <!-- 테이블 -->
               <div class="stock_table_wrapper">
                 <table class="stock_table head">
                   <thead>
@@ -70,6 +73,7 @@
                   </thead>
                 </table>
 
+                <!-- 스크롤 바디 -->
                 <div class="stock_table_body">
                   <table class="stock_table body">
                     <tbody></tbody>
@@ -78,10 +82,10 @@
               </div>
             </div>
 
-            <!-- 오른쪽 관리 패널 -->
+            <!-- 관리 패널 -->
             <div class="side_panel">
 
-              <!-- 카테고리 -->
+              <!-- 카테고리 관리 -->
               <div class="category_panel">
                 <h3>카테고리 관리</h3>
                 <input type="text" placeholder="카테고리명 입력" />
@@ -92,11 +96,12 @@
                 <ul class="category_list"></ul>
               </div>
 
-              <!-- 핀 관리 -->
+              <!-- 위치(핀) 관리 -->
               <div class="pin_panel">
                 <h3>위치 관리</h3>
                 <input type="text" class="pin_name_input" placeholder="위치명 입력 (예: A1)" />
 
+                <!-- 좌표 입력 -->
                 <div class="pin_xy_row">
                   <input type="number" class="pin_x_input" placeholder="X" step="0.01" />
                   <input type="number" class="pin_y_input" placeholder="Y" step="0.01" />
@@ -110,22 +115,28 @@
                 <ul class="pin_list"></ul>
               </div>
 
-              <!-- 🔥 CSV 업로드 패널 추가 -->
+              <!-- CSV 업로드 -->
               <div class="csv_panel">
                 <h3>CSV 업로드</h3>
 
+                <!-- 파일 선택 + 템플릿 다운로드 -->
                 <div class="csv_file_row">
                   <input type="file" id="csvFileInput" accept=".csv" />
-                  <button type="button" class="add_btn"
-                    onclick="window.location.href='/stock/csv/template'">
+                  <button
+                    type="button"
+                    class="add_btn"
+                    onclick="window.location.href='/stock/csv/template'"
+                  >
                     CSV 형식 다운로드
                   </button>
                 </div>
 
+                <!-- 업로드 버튼 -->
                 <div class="button_row">
                   <button class="add_btn" onclick="uploadStockCsv()">업로드</button>
                 </div>
 
+                <!-- 업로드 상태 텍스트 -->
                 <p id="csvStatus" class="csv_status_text"></p>
               </div>
 

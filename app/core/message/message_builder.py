@@ -1,9 +1,8 @@
 import time
 import math
 
-# -----------------------------
-# ✓ Quaternion → Yaw 변환 함수
-# -----------------------------
+
+# Quaternion -> yaw(rad) 변환
 def quaternion_to_yaw(q):
     x = q.get('x', 0.0)
     y = q.get('y', 0.0)
@@ -15,16 +14,12 @@ def quaternion_to_yaw(q):
     return math.atan2(siny, cosy)
 
 
-# =========================================================
-#               MESSAGE BUILDER
-# =========================================================
+# WebSocket 전송용 메시지 생성
 def build_message(topic_type: str, data: dict) -> dict:
     timestamp = time.strftime("%Y-%m-%dT%H:%M:%S")
     robot_name = data.get("robot_name", "unknown")
 
-    # -----------------------------
-    # BATTERY
-    # -----------------------------
+    # 배터리 상태
     if topic_type == "battery":
         payload = {
             "robot_name": robot_name,
@@ -35,9 +30,7 @@ def build_message(topic_type: str, data: dict) -> dict:
             "status": data.get("status", "Unknown"),
         }
 
-    # -----------------------------
-    # ODOM
-    # -----------------------------
+    # ODOM 정보
     elif topic_type == "odom":
         ori = data.get("orientation", {})
         theta = quaternion_to_yaw(ori)
@@ -52,22 +45,18 @@ def build_message(topic_type: str, data: dict) -> dict:
             "theta": theta
         }
 
-    # -----------------------------
-    # AMCL POSE
-    # -----------------------------
+    # AMCL 전역 위치
     elif topic_type == "amcl_pose":
         payload = {
             "robot_name": robot_name,
             "timestamp": timestamp,
             "x": data.get("x"),
             "y": data.get("y"),
-            "theta": data.get("theta"),      # ← 여기까지 포함됨
+            "theta": data.get("theta"),
             "orientation": data.get("orientation", {})
         }
 
-    # -----------------------------
-    # CMD_VEL
-    # -----------------------------
+    # 속도 명령
     elif topic_type == "cmd_vel":
         payload = {
             "robot_name": robot_name,
@@ -76,9 +65,7 @@ def build_message(topic_type: str, data: dict) -> dict:
             "angular_z": data.get("angular_z", 0.0),
         }
 
-    # -----------------------------
-    # BASE LINK
-    # -----------------------------
+    # base_link 기준 좌표
     elif topic_type == "base_link":
         payload = {
             "robot_name": robot_name,
@@ -88,9 +75,7 @@ def build_message(topic_type: str, data: dict) -> dict:
             "theta": data.get("theta")
         }
 
-    # -----------------------------
-    # NAV PATH
-    # -----------------------------
+    # 네비게이션 경로
     elif topic_type == "nav":
         payload = {
             "robot_name": robot_name,
@@ -98,9 +83,7 @@ def build_message(topic_type: str, data: dict) -> dict:
             "path_points": data.get("path_points", []),
         }
 
-    # -----------------------------
-    # TELEOP KEY
-    # -----------------------------
+    # 텔레옵 키 입력
     elif topic_type == "teleop_key":
         payload = {
             "robot_name": robot_name,
@@ -108,9 +91,7 @@ def build_message(topic_type: str, data: dict) -> dict:
             "key": data.get("key", ""),
         }
 
-    # -----------------------------
-    # DIAGNOSTICS
-    # -----------------------------
+    # 진단 상태 요약
     elif topic_type == "diagnostics":
         payload = {
             "robot_name": robot_name,
@@ -119,16 +100,7 @@ def build_message(topic_type: str, data: dict) -> dict:
             "color": data.get("color", "green"),
         }
 
-    # -----------------------------
-    # CAMERA
-    # -----------------------------
-    elif topic_type == "camera":
-        payload = {
-            "robot_name": robot_name,
-            "timestamp": timestamp,
-            "data": data.get("data", ""),
-        }
-
+    # 기타 토픽
     else:
         payload = {
             "robot_name": robot_name,

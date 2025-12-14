@@ -1,4 +1,3 @@
-# app/main.py
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -7,7 +6,6 @@ from fastapi.responses import HTMLResponse
 
 from app.core.config import settings
 
-# 기존 라우터들
 from app.routers.stock_router import router as stock_router
 from app.routers.robot_router import router as robot_router
 from app.routers.log_router import router as log_router
@@ -15,21 +13,18 @@ from app.routers.category_router import router as category_router
 from app.routers.pin_router import router as pin_router
 from app.routers.page_router import router as page_router
 from app.routers.map_router import router as map_router
-
-# 🔥 CSV 라우터 추가 (유일한 변경점)
 from app.routers.stock_csv_router import router as stock_csv_router
 
 from app.websocket.manager import register, unregister, handle_message
 from app.core.database import Base, engine
-
 from app.core.ros.ros_manager import ros_manager
-from app.core.ros.publisher import RosPublisher
 
 import json
 
+# FastAPI 앱 생성
 app = FastAPI(title="WMS FastAPI Server", debug=settings.DEBUG)
 
-# CORS
+# CORS 설정
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -38,13 +33,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 정적 파일
+# 정적 파일 마운트
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# 템플릿 설정
 templates = Jinja2Templates(directory="app/templates")
 
-# --------------------------------
-# 🔥 라우터 등록 (기존 + CSV 추가)
-# --------------------------------
+# 라우터 등록
 app.include_router(page_router)
 app.include_router(stock_router)
 app.include_router(robot_router)
@@ -53,23 +48,15 @@ app.include_router(category_router)
 app.include_router(pin_router)
 app.include_router(map_router)
 
-# 🔥 CSV 기능 추가
-# /stock/csv/upload
-# /stock/csv/template
+# CSV 라우터 등록 (/stock/csv/*)
 app.include_router(stock_csv_router, prefix="/stock")
 
-
-# --------------------------------
-# 기본 페이지
-# --------------------------------
+# 기본 페이지 렌더링
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-
-# --------------------------------
-# WebSocket
-# --------------------------------
+# WebSocket 엔드포인트
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
@@ -93,17 +80,14 @@ async def websocket_endpoint(websocket: WebSocket):
         await unregister(websocket)
         print("[WS] 연결 해제 ❌")
 
-
-# --------------------------------
-# 서버 이벤트
-# --------------------------------
+# 서버 시작 이벤트
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
     print("✅ DB 테이블 자동 생성 완료")
     print("🚀 서버 시작 중... (ROS 연결은 요청 시 활성화)")
 
-
+# 서버 종료 이벤트
 @app.on_event("shutdown")
 def on_shutdown():
     print("🛑 서버 종료 중…")

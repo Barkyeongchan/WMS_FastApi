@@ -1,9 +1,11 @@
+/* # 페이지 전체 높이 고정 */
 html, body {
   height: 100%;
   margin: 0;
   padding: 0;
 }
 
+/* # 전체 배경 + 세로 레이아웃 */
 body {
   background-color: #ededed;
   display: flex;
@@ -11,12 +13,14 @@ body {
   height: 100vh;
 }
 
+/* # main 영역: 좌우 2단 레이아웃 */
 main {
   flex: 1;
   display: flex;
   height: 100%;
 }
 
+/* # 메인 화면 컨테이너 */
 .main_screen {
   flex: 1;
   display: flex;
@@ -24,6 +28,7 @@ main {
   height: 100%;
 }
 
+/* # 로봇 페이지 전체 바디 레이아웃 */
 .main_body {
   display: flex;
   flex-direction: row;
@@ -34,7 +39,7 @@ main {
   overflow: hidden;
 }
 
-/* ✅ 왼쪽 패널: 비율 1:1 적용 */
+/* # 왼쪽 패널: 상태/제어 영역 */
 .left_panel {
   display: flex;
   flex-direction: column;
@@ -45,14 +50,15 @@ main {
   overflow: hidden;
 }
 
+/* # 왼쪽 패널 내부: 상태/제어 카드 비율 1:1 */
 .status_section,
 .control_panel {
-  flex: 1; /* 각각 1:1 비율 */
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
 
-/* 오른쪽 패널 */
+/* # 오른쪽 패널: 지도 영역 */
 .right_panel {
   flex: 0.6;
   display: flex;
@@ -60,6 +66,7 @@ main {
   height: 100%;
 }
 
+/* # 섹션 타이틀 공통 */
 .section_title {
   font-size: 1.2rem;
   font-weight: 700;
@@ -73,6 +80,7 @@ main {
   align-items: center;
 }
 
+/* # 섹션 타이틀 밑줄 */
 .section_title::after {
   content: "";
   position: absolute;
@@ -84,6 +92,7 @@ main {
   border-radius: 1px;
 }
 
+/* # 로봇 상태 카드 박스 */
 .robot_cards {
   background-color: #fff;
   border-radius: 10px;
@@ -92,13 +101,13 @@ main {
   flex: 1;
 }
 
+/* # 로봇 선택 드롭다운 폭 */
 .robot_select {
   width: 250px;
   max-width: 100%;
 }
 
-
-/* 이하 동일 */
+/* # 로봇 카드 헤더: 로봇 선택 + 상태 */
 .robot_header {
   display: flex;
   justify-content: space-between;
@@ -107,6 +116,7 @@ main {
   margin-bottom: 14px;
 }
 
+/* # 상태 태그 공통 */
 .status_tag {
   padding: 6px 10px;
   border-radius: 6px;
@@ -114,9 +124,12 @@ main {
   font-weight: 600;
   color: #fff;
 }
+
+/* # 상태 태그: 활성/대기 */
 .status_tag.active { background-color: #2d89ef; }
 .status_tag.idle { background-color: #7f8c8d; }
 
+/* # 상태 행 공통 */
 .status_row {
   display: flex;
   align-items: center;
@@ -124,8 +137,11 @@ main {
   margin: 20px 0;
 }
 
+/* # 라벨/값 공통 */
 .label { font-size: 1rem; color: #555; width: 70px; font-weight: 600;}
 .value { font-weight: 800; color: #2c3e50; }
+
+/* # 작은 값 표기 */
 .value.small {
   min-width: 65px;
   text-align: right;
@@ -133,6 +149,8 @@ main {
   font-weight: 700;
   color: #444;
 }
+
+/* # 모드 배지 */
 .value.mode.auto {
   background: #2ecc71; color: #fff; padding: 4px 10px; border-radius: 6px;
 }
@@ -140,17 +158,25 @@ main {
   background: #f39c12; color: #fff; padding: 4px 10px; border-radius: 6px;
 }
 
+/* # 게이지 행 공통 */
 .gauge_row { gap: 10px; }
+
+/* # 게이지 바 래퍼 */
 .bar_wrapper {
   flex: 1; height: 8px; background-color: #ecf0f1;
   border-radius: 5px; overflow: hidden; margin-right: 10px;
 }
+
+/* # 게이지 바 채움 */
 .bar_fill {
   height: 100%; border-radius: 5px; transition: width 0.3s ease;
 }
+
+/* # 게이지 바 색상: 속도/배터리 */
 .bar_fill.speed { background: linear-gradient(90deg, #74b9ff, #0984e3); }
 .bar_fill.battery { background: linear-gradient(90deg, #2ecc71, #27ae60); }
 
+/* # 로봇 제어 카드 */
 .control_panel {
   background: white;
   border-radius: 10px;
@@ -160,6 +186,7 @@ main {
   flex-direction: column;
 }
 
+/* # 제어 내부 2단(좌/우) */
 .control_wrapper {
   display: flex;
   justify-content: space-between;
@@ -167,6 +194,7 @@ main {
   flex: 1;
 }
 
+/* # 제어 좌/우 공통 카드 */
 .control_left,
 .control_right {
   flex: 1;
@@ -179,6 +207,7 @@ main {
   justify-content: space-between;
 }
 
+/* # 속도 조절 섹션 */
 .speed_control {
   display: flex;
   flex-direction: column;
@@ -186,11 +215,13 @@ main {
   margin-bottom: 25px;
 }
 
+/* # 속도 조절 라벨 */
 .speed_control label {
   font-weight: 600;
   color: #2f3542;
 }
 
+/* # 속도 슬라이더 기본 */
 #speed_slider {
   width: 100%;
   -webkit-appearance: none;
@@ -201,6 +232,7 @@ main {
   margin-top: 10px;
 }
 
+/* # 속도 슬라이더 손잡이 */
 #speed_slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 18px;
@@ -213,16 +245,19 @@ main {
   transition: transform 0.2s ease;
 }
 
+/* # 속도 슬라이더 손잡이 hover */
 #speed_slider::-webkit-slider-thumb:hover {
   transform: scale(1.15);
 }
 
+/* # 슬라이더 단계 라벨 */
 .slider_labels {
   display: flex;
   justify-content: space-between;
   margin-top: 8px;
 }
 
+/* # 슬라이더 단계 텍스트 */
 .slider_labels span {
   font-size: 0.8rem;
   color: #707b7c;
@@ -232,15 +267,11 @@ main {
   position: relative;
 }
 
-.slider_labels span:nth-child(1) {
-  transform: translateX(-20px);
-}
+/* # 1단/3단 위치 미세 보정 */
+.slider_labels span:nth-child(1) { transform: translateX(-20px); }
+.slider_labels span:nth-child(3) { transform: translateX(20px); }
 
-.slider_labels span:nth-child(3) {
-  transform: translateX(20px);
-}
-
-/* ✅ 핀 선택 영역 */
+/* # 핀 선택 영역 */
 .pin_move_section {
   display: flex;
   flex-direction: column;
@@ -248,11 +279,13 @@ main {
   margin-top: 20px;
 }
 
+/* # 핀 선택 라벨 */
 .pin_move_section label {
   font-weight: 600;
   color: #2f3542;
 }
 
+/* # 핀 선택 드롭다운 */
 .pin_select {
   padding: 8px 10px;
   border: 1px solid #dcdde1;
@@ -262,12 +295,13 @@ main {
   color: #2c3e50;
 }
 
+/* # 핀 선택 포커스 */
 .pin_select:focus {
   outline: none;
   border-color: #4b7bec;
 }
 
-/* ✅ 버튼 묶음 */
+/* # 이동/복귀/정지 버튼 묶음 */
 .move_buttons {
   display: flex;
   flex-direction: column;
@@ -275,6 +309,7 @@ main {
   margin-top: 25px;
 }
 
+/* # 제어 버튼 공통 */
 .control_btn {
   flex: 1;
   padding: 10px 0;
@@ -286,28 +321,22 @@ main {
   transition: all 0.2s ease;
 }
 
-.control_btn.move_btn {
-  background-color: #4b7bec; /* 파란계열 */
-}
+/* # 제어 버튼: 이동/복귀/정지 */
+.control_btn.move_btn { background-color: #4b7bec; }
+.control_btn.return { background-color: #1e8449; }
+.control_btn.stop { background-color: #c0392b; }
 
-.control_btn.return {
-  background-color: #1e8449; /* 초록 */
-}
+/* # 제어 버튼 hover */
+.control_btn:hover { opacity: 0.9; }
 
-.control_btn.stop {
-  background-color: #c0392b; /* 빨강 */
-}
-
-.control_btn:hover {
-  opacity: 0.9;
-}
-
+/* # 모드 전환 버튼 영역 */
 .mode_switch {
   display: flex;
   gap: 10px;
   margin-bottom: 15px;
 }
 
+/* # 모드 버튼 공통 */
 .mode_btn {
   flex: 1;
   padding: 10px 0;
@@ -320,16 +349,17 @@ main {
   transition: all 0.2s ease;
 }
 
+/* # 모드 버튼 활성 */
 .mode_btn.active {
   background-color: #4b7bec;
   color: #fff;
   border-color: #4b7bec;
 }
 
-.mode_btn:hover:not(.active) {
-  background-color: #e5e7ea;
-}
+/* # 모드 버튼 비활성 hover */
+.mode_btn:hover:not(.active) { background-color: #e5e7ea; }
 
+/* # 방향 패드 컨테이너 */
 .direction_pad {
   position: relative;
   display: flex;
@@ -346,12 +376,14 @@ main {
   box-sizing: border-box;
 }
 
+/* # 방향 패드 행 */
 .direction_pad .row {
   display: flex;
   gap: 8px;
   justify-content: center;
 }
 
+/* # 방향 버튼 공통 */
 .dir_btn {
   width: 55px; height: 55px;
   border: none;
@@ -363,12 +395,16 @@ main {
   transition: all 0.2s ease;
 }
 
+/* # 방향 버튼 활성 */
 .dir_btn.active { background-color: #4b7bec; cursor: pointer; }
 
+/* # 중앙 정지 버튼 */
 .dir_btn.stop_center { background-color: #c0392b; }
 
+/* # 비활성 버튼 */
 .dir_btn:disabled { background-color: #d6d8da; opacity: 0.6; }
 
+/* # 자동 모드 안내 오버레이 */
 .direction_pad::after {
   content: "⚙ 현재 자동 모드입니다.\A수동 모드로 전환하면 조작할 수 있습니다.";
   white-space: pre-line;
@@ -389,11 +425,13 @@ main {
   transition: opacity 0.3s ease;
 }
 
+/* # 수동 잠금 활성 시 오버레이 표시 */
 .control_right .manual_lock.active ~ .direction_pad::after {
   opacity: 1;
   pointer-events: all;
 }
 
+/* # 지도 섹션 카드 */
 .map_section {
   background: #fff;
   border-radius: 8px;
@@ -402,6 +440,7 @@ main {
   flex-direction: column;
 }
 
+/* # 지도 캔버스 영역 */
 .map_canvas {
   flex: 1;
   background-color: #f0f0f0;
@@ -412,7 +451,7 @@ main {
   color: #777;
 }
 
-/* ✅ 모달 */
+/* # 모달 배경 */
 .modal {
   position: fixed;
   top: 0; left: 0;
@@ -424,8 +463,10 @@ main {
   z-index: 999;
 }
 
+/* # 모달 숨김 */
 .modal.hidden { display: none; }
 
+/* # 모달 컨텐츠 박스 */
 .modal_content {
   width: 350px;
   background: #fff;
@@ -435,17 +476,20 @@ main {
   animation: fadeIn 0.2s ease;
 }
 
+/* # 모달 등장 애니메이션 */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* # 모달 제목 */
 .modal_title {
   font-size: 1.1rem;
   font-weight: 700;
   margin-bottom: 12px;
 }
 
+/* # 모달 입력 섹션 */
 .modal_section {
   display: flex;
   flex-direction: column;
@@ -453,6 +497,7 @@ main {
   margin: 10px 0;
 }
 
+/* # 모달 input/select 공통 */
 .modal_section input,
 .modal_section select {
   padding: 8px 10px;
@@ -461,6 +506,7 @@ main {
   font-size: 0.9rem;
 }
 
+/* # 모달 버튼 공통 */
 .modal_btn {
   width: 100%;
   padding: 10px;
@@ -473,10 +519,12 @@ main {
   transition: all 0.2s ease;
 }
 
+/* # 모달 버튼 타입 */
 .modal_btn.add { background: #2ecc71; }
 .modal_btn.delete { background: #c0392b; }
 .modal_btn:hover { opacity: 0.85; }
 
+/* # 모달 닫기 버튼 */
 .modal_close {
   width: 100%;
   margin-top: 14px;
@@ -489,7 +537,7 @@ main {
   cursor: pointer;
 }
 
-/* ✅ 로봇 추가 버튼 */
+/* # 로봇 추가/제거 버튼 */
 .add_robot_btn {
   font-size: 1rem;
   background: #868686;
@@ -500,10 +548,10 @@ main {
   transition: 0.2s;
 }
 
-.add_robot_btn:hover {
-  background: #3867d6;
-}
+/* # 로봇 추가/제거 버튼 hover */
+.add_robot_btn:hover { background: #3867d6; }
 
+/* # 로봇 선택 드롭다운(상세 스타일) */
 .robot_select {
   padding: 10px 5px;
   background: #fff;
@@ -515,64 +563,51 @@ main {
   color: #2c3e50;
 }
 
+/* # 로봇 선택 포커스 */
 .robot_select:focus {
   outline: none;
   border-color: #4b7bec;
 }
 
-/* 위치 좌표 스타일 강화 */
+/* # 위치 좌표 표시 강조 */
 .value.position_value {
-  font-size: 1.2rem;     /* 🔥 더 크게 */
-  font-weight: 600;       /* 🔥 더 굵게 */
-  color: #2c3e50;         /* 진한 네이비 */
-  letter-spacing: 0.5px;  /* 미세한 간격 → 고급스러움 */
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #2c3e50;
+  letter-spacing: 0.5px;
 }
 
-
-/* ====== 추가 상태 스타일 ====== */
-
-/* 시스템 상태: 정상 / 오류 */
+/* # 시스템 상태 표시 */
 .value.system_status {
   font-weight: 600;
-  color: #27ae60; /* 녹색: 정상 */
+  color: #27ae60;
 }
-.value.system_status.error {
-  color: #e74c3c; /* 빨강: 오류 */
-}
+.value.system_status.error { color: #e74c3c; }
 
-/* 네트워크 상태 */
+/* # 네트워크 상태 표시 */
 .value.network_status {
   font-weight: 600;
-  color: #2980b9; /* 파랑: 연결됨 */
+  color: #2980b9;
 }
-.value.network_status.offline {
-  color: #c0392b; /* 끊김 */
-}
+.value.network_status.offline { color: #c0392b; }
 
+/* # 시스템/네트워크 공통 강조 */
 .value.system_status,
 .value.network_status {
-  font-size: 1.2rem;    /* 🔥 글자 크기 업 */
-  font-weight: 800;     /* 🔥 더 굵게 */
+  font-size: 1.2rem;
+  font-weight: 800;
 }
 
+/* # 수행 시간 표시 */
+.value.exec_time { font-weight: 600; }
 
-/* 수행 시간 */
-.value.exec_time {
-  font-weight: 600;
-}
+/* # 핀 이동 버튼 여백 */
+.pin_control .move_pin_btn { margin-top: 5px; }
 
-.pin_control .move_pin_btn {
-  margin-top: 5px;
-}
-
-/* 모달 숨김 제어 */
+/* # 공통 숨김 클래스 */
 .hidden { display: none !important; }
 
-/* ============================================
-   🔥 자동 / 수동 모드 안내 메시지 스타일 추가
-   기존 레이아웃과 충돌 없음
-============================================ */
-
+/* # 자동/수동 안내 메시지 박스 */
 .manual_notice {
   background: #27ae60cc;
   color: white;
@@ -583,7 +618,6 @@ main {
   text-align: center;
   font-weight: 600;
 }
-
 .auto_lock_notice {
   background: #00000055;
   color: white;
@@ -595,27 +629,22 @@ main {
   font-weight: 600;
 }
 
-/* 숨김처리 공통 */
-.hidden {
-  display: none !important;
-}
-
-/* 🔥 헤더 작업 상태 (대기중 / 이동중 / 작업중) */
+/* # 헤더 로봇 상태 텍스트 */
 .value.robot_state {
   font-size: 1.2rem;
   font-weight: 700;
-  color: #2c3e50;    /* 기본 진한색 */
+  color: #2c3e50;
 }
 
-/* 로봇 상태 텍스트 공통 */
+/* # 로봇 상태 텍스트 공통 */
 .robot_state {
-    font-size: 1.3rem;
-    font-weight: 700;
-    transition: color 0.25s ease;
+  font-size: 1.3rem;
+  font-weight: 700;
+  transition: color 0.25s ease;
 }
 
-/* 상태별 색상 */
-.robot_state.waiting { color: #2c3e50; }   /* 대기중 = 진한 네이비 */
-.robot_state.moving { color: #e67e22; }    /* 이동중 = 주황 */
-.robot_state.returning { color: #3498db; } /* 복귀중 = 파랑 */
-.robot_state.working { color: #e74c3c; }   /* 작업중 = 빨강 */
+/* # 로봇 상태별 색상 */
+.robot_state.waiting { color: #2c3e50; }
+.robot_state.moving { color: #e67e22; }
+.robot_state.returning { color: #3498db; }
+.robot_state.working { color: #e74c3c; }

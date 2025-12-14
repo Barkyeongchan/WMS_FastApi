@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("✅ WMS Robot Page Loaded");
+  console.log("WMS Robot Page Loaded");
 
-  // ====== DOM 캐시 ======
+  // DOM 요소 참조
   const selectEl = document.getElementById("robot_select");
   const deleteSelect = document.getElementById("robot_delete_select");
   const addBtn = document.getElementById("btn_add_robot");
@@ -12,21 +12,22 @@ document.addEventListener("DOMContentLoaded", () => {
   const moveBtn = document.querySelector(".move_btn");
   const returnBtn = document.querySelector(".return");
   const emergencyBtn = document.querySelector(".stop");
-  
 
-  // 시스템 상태
+  // 시스템 상태 요소 참조
   const sysStatusEl = document.querySelector(".value.system_status");
 
-  // 모달
+  // 모달 요소 참조
   const openModalBtn = document.getElementById("open_modal_btn");
   const modal = document.getElementById("robot_modal");
   const modalCloseBtn = document.getElementById("modal_close_btn");
 
+  // 로컬스토리지 키
   const STORAGE_KEY = "last_selected_robot";
 
+  // 마지막 속도 캐시
   let lastOdometrySpeed = 0;
 
-  // ====== 모달 ======
+  // 모달 열기
   function openModal() {
     if (!modal) return;
     modal.classList.remove("hidden");
@@ -34,6 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (nameInput) nameInput.focus();
   }
 
+  // 모달 닫기
   function closeModal() {
     if (!modal) return;
     modal.classList.add("hidden");
@@ -55,19 +57,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // ====== WebSocket ======
+  // WebSocket 연결
   const WS_URL =
     (location.protocol === "https:" ? "wss://" : "ws://") +
     location.host +
     "/ws";
   const ws = new WebSocket(WS_URL);
 
+  // 초기 상태 동기화 타이머
   let lastStatusAt = 0;
   let wsOpenedAt = 0;
   let initStatusTimeout = null;
 
   ws.onopen = () => {
-    console.log("[WS] Connected ✅", WS_URL);
+    console.log("[WS] Connected", WS_URL);
+
     wsOpenedAt = Date.now();
     ws.send(JSON.stringify({ type: "init_request" }));
 
@@ -88,17 +92,20 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   ws.onerror = (err) => console.error("[WS] Error:", err);
+
   ws.onclose = () => {
-    console.warn("[WS] Disconnected ❌");
+    console.warn("[WS] Disconnected");
     if (initStatusTimeout) {
       clearTimeout(initStatusTimeout);
       initStatusTimeout = null;
     }
   };
 
+  // ping 전송 타이머
   const pingTimer = setInterval(() => {
-    if (ws.readyState === WebSocket.OPEN)
+    if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: "ping" }));
+    }
   }, 25000);
 
   window.addEventListener("beforeunload", () => {
@@ -106,15 +113,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (initStatusTimeout) clearTimeout(initStatusTimeout);
   });
 
-  // ====== 배터리 게이지 업데이트 ======
+  // 배터리 게이지 UI 갱신
   function updateBattery(level) {
     const rows = document.querySelectorAll(".status_row.gauge_row");
     let batteryRow = null;
+
     rows.forEach((row) => {
       const label = row.querySelector(".label");
-      if (label && label.textContent.trim().includes("배터리"))
+      if (label && label.textContent.trim().includes("배터리")) {
         batteryRow = row;
+      }
     });
+
     if (!batteryRow) return;
 
     const bar = batteryRow.querySelector(".bar_fill.battery");
@@ -125,8 +135,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (bar) {
       if (level < 20) {
-        bar.style.background =
-          "linear-gradient(90deg, #e74c3c, #c0392b)";
+        bar.style.background = "linear-gradient(90deg, #e74c3c, #c0392b)";
       } else {
         bar.style.background = "";
         bar.classList.add("battery");
@@ -134,13 +143,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ====== 속도 정책 ======
+  // 속도 제한 정책
   const MAX_SPEED = { 1: 0.10, 2: 0.15, 3: 0.22 };
   const MAX_SPEED_DISPLAY = 0.22;
 
+  // 속도/모드 상태
   let currentSpeedLevel = 1;
   let currentMode = "auto";
 
+  // 조작 UI 요소 참조
   const speedSlider = document.getElementById("speed_slider");
   const modeText = document.querySelector(".value.mode");
   const autoBtn = document.getElementById("auto_mode");
@@ -148,53 +159,47 @@ document.addEventListener("DOMContentLoaded", () => {
   const manualLock = document.getElementById("manual_lock");
   const dirButtons = document.querySelectorAll(".dir_btn");
 
+  // WebSocket 메시지 수신 처리
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
 
+      // 로봇 상태 표시 UI 갱신
       if (data.type === "robot_status") {
-          const state = data.payload?.state || "-";
-          const el = document.getElementById("robot_state");
-          if (!el) return;
-            
-          // 텍스트 표시
-          el.textContent = state;
-            
-          // 기존 클래스 초기화
-          el.className = "value robot_state";
-            
-          // 상태별 클래스 부여
-          if (state === "대기중") el.classList.add("waiting");
-          if (state === "이동중") el.classList.add("moving");
-          if (state === "복귀중") el.classList.add("returning");
-          if (state === "작업중") el.classList.add("working");
+        const state = data.payload?.state || "-";
+        const el = document.getElementById("robot_state");
+        if (!el) return;
+
+        el.textContent = state;
+        el.className = "value robot_state";
+
+        if (state === "대기중") el.classList.add("waiting");
+        if (state === "이동중") el.classList.add("moving");
+        if (state === "복귀중") el.classList.add("returning");
+        if (state === "작업중") el.classList.add("working");
       }
-      
-      
-      // ⭐ 로봇 도착 처리 (작업중 / 대기중)
+
+      // 도착 이벤트 처리
       if (data.type === "robot_arrived") {
-          const el = document.getElementById("robot_state");
-      
-          const pin = data.payload.pin;
-      
-          if (pin === "WAIT") {
-              el.textContent = "대기중";   // 복귀 완료
-          } else {
-              el.textContent = "작업중";   // 목적지 도착
-          }
-        
-          return;  // 더 이상 아래 코드 수행 X
+        const el = document.getElementById("robot_state");
+        const pin = data.payload.pin;
+
+        if (pin === "WAIT") {
+          el.textContent = "대기중";
+        } else {
+          el.textContent = "작업중";
+        }
+
+        return;
       }
 
-
-      // 연결 상태
+      // 연결 상태 처리
       if (data.type === "status") {
         lastStatusAt = Date.now();
 
         const { robot_name, ip, connected } = data.payload || {};
-        console.log(
-          `[STATUS] ${robot_name || "-"} (${ip || "-"}) connected=${connected}`
-        );
+        console.log(`[STATUS] ${robot_name || "-"} (${ip || "-"}) connected=${connected}`);
+
         if (netStatusEl) {
           netStatusEl.textContent = connected ? "연결됨" : "해제됨";
           netStatusEl.style.color = connected ? "#2ecc71" : "#e74c3c";
@@ -208,26 +213,21 @@ document.addEventListener("DOMContentLoaded", () => {
             sysStatusEl.style.color = "#999";
           }
 
-          const posRow = document.querySelector(
-            ".value.position_value"
-          );
+          const posRow = document.querySelector(".value.position_value");
           if (posRow) posRow.textContent = "( - , - )";
 
-          const speedRow = document.querySelector(
-            ".status_row.gauge_row .value.small"
-          );
+          const speedRow = document.querySelector(".status_row.gauge_row .value.small");
           if (speedRow) speedRow.textContent = "0.00 m/s";
 
           const speedBar = document.querySelector(".bar_fill.speed");
           if (speedBar) {
             speedBar.style.width = "0%";
-            speedBar.style.background =
-              "linear-gradient(90deg, #ccc, #999)";
+            speedBar.style.background = "linear-gradient(90deg, #ccc, #999)";
           }
         }
       }
 
-      // 배터리
+      // 배터리 수신 처리
       if (data.type === "battery") {
         let level =
           data?.payload?.percentage ??
@@ -241,91 +241,72 @@ document.addEventListener("DOMContentLoaded", () => {
 
         updateBattery(level);
 
-        console.log(
-          `[BATTERY] ${data?.payload?.robot_name || "-"} → ${level.toFixed(
-            0
-          )}%`
-        );
+        console.log(`[BATTERY] ${data?.payload?.robot_name || "-"} → ${level.toFixed(0)}%`);
       }
 
-      // 위치 (amcl_pose)
+      // 위치 수신 처리
       if (data.type === "amcl_pose") {
         try {
           const x = data.payload?.x;
           const y = data.payload?.y;
 
-          const posRow = document.querySelector(
-            ".value.position_value"
-          );
+          const posRow = document.querySelector(".value.position_value");
           if (posRow) {
             posRow.textContent =
-              (x != null && y != null)
-                ? `(${x.toFixed(1)}, ${y.toFixed(1)})`
-                : "( - , - )";
+              x != null && y != null ? `(${x.toFixed(1)}, ${y.toFixed(1)})` : "( - , - )";
           }
 
-          // 속도는 odom에서 마지막으로 저장된 값 사용
-          const speedRow = document.querySelector(
-            ".status_row.gauge_row .value.small"
-          );
+          const speedRow = document.querySelector(".status_row.gauge_row .value.small");
           const speedBar = document.querySelector(".bar_fill.speed");
 
           if (speedRow && lastOdometrySpeed != null) {
             const speed = Math.abs(lastOdometrySpeed);
             speedRow.textContent = `${speed.toFixed(2)} m/s`;
 
-            const percent = Math.min(
-              (speed / MAX_SPEED_DISPLAY) * 100,
-              100
-            );
-
+            const percent = Math.min((speed / MAX_SPEED_DISPLAY) * 100, 100);
             speedBar.style.width = `${percent}%`;
 
             if (percent < 40) {
-              speedBar.style.background =
-                "linear-gradient(90deg, #3498db, #2980b9)";
+              speedBar.style.background = "linear-gradient(90deg, #3498db, #2980b9)";
             } else if (percent < 80) {
-              speedBar.style.background =
-                "linear-gradient(90deg, #2ecc71, #27ae60)";
+              speedBar.style.background = "linear-gradient(90deg, #2ecc71, #27ae60)";
             } else {
-              speedBar.style.background =
-                "linear-gradient(90deg, #e74c3c, #c0392b)";
+              speedBar.style.background = "linear-gradient(90deg, #e74c3c, #c0392b)";
             }
           }
 
-          // ★★★★★ 지도 부분: 로봇 위치 업데이트 호출 ★★★★★
           robotMap_updateRobotMarker(x, y, data.payload.theta);
-
         } catch (e) {
           console.error("amcl_pose 처리 오류:", e);
         }
       }
 
-      // odom → 속도 업데이트
+      // 속도 수신 처리
       if (data.type === "odom") {
         lastOdometrySpeed = data.payload?.linear?.x ?? 0;
       }
 
-      // 시스템 상태
+      // 시스템 상태 수신 처리
       if (data.type === "diagnostics") {
         const status = data.payload?.status ?? "-";
         const color = data.payload?.color ?? "#999";
+
         if (sysStatusEl) {
           sysStatusEl.textContent = status;
           sysStatusEl.style.color = color;
         }
       }
-
     } catch (err) {
       console.error("[WS 메시지 처리 오류]", err);
     }
   };
 
-  // ====== 로봇 목록 불러오기 ======
+  // 로봇 목록 로딩 및 셀렉트 갱신
   async function loadRobotList() {
     try {
       const res = await fetch("/robots/");
       if (!res.ok) throw new Error("로봇 목록 불러오기 실패");
+
       const robots = await res.json();
       selectEl.innerHTML = "";
       deleteSelect.innerHTML = "";
@@ -372,18 +353,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ====== 연결 요청 ======
+  // 로봇 연결 요청
   let connectBusy = false;
+
   async function connectRobot(id) {
     if (connectBusy || !id) return;
+
     connectBusy = true;
     selectEl.disabled = true;
+
     try {
-      const res = await fetch(`/robots/connect/${id}`, {
-        method: "POST",
-      });
+      const res = await fetch(`/robots/connect/${id}`, { method: "POST" });
       if (!res.ok) throw new Error("연결 요청 실패");
       const data = await res.json();
+
       console.log(`[CONNECT] ${data.message}`);
       localStorage.setItem(STORAGE_KEY, id);
     } catch (err) {
@@ -396,7 +379,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ====== CRUD ======
+  // 로봇 선택 변경 처리
   if (selectEl) {
     selectEl.addEventListener("change", async () => {
       const id = selectEl.value;
@@ -404,18 +387,21 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // 로봇 등록 처리
   if (addBtn) {
     addBtn.addEventListener("click", async () => {
       const name = nameInput?.value?.trim();
       const ip = ipInput?.value?.trim();
       if (!name || !ip) return alert("이름/IP 입력 필요");
+
       const res = await fetch("/robots/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, ip }),
       });
+
       if (res.ok) {
-        alert("✅ 등록 완료");
+        alert("등록 완료");
         nameInput.value = "";
         ipInput.value = "";
         await loadRobotList();
@@ -423,6 +409,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // 로봇 삭제 처리
   if (deleteBtn) {
     deleteBtn.addEventListener("click", async () => {
       const id = deleteSelect.value;
@@ -432,18 +419,20 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ====== 자동/수동 모드 & 수동 가속 제어 ======
-
+  // 수동 제어 상태
   let currentLinear = 0;
   let currentAngular = 0;
   let accelInterval = null;
 
+  // 가속 설정값
   const ACCEL_STEP = 0.03;
   const ACCEL_TICK = 70;
   const BASE_ANGULAR = 0.6;
 
+  // 수동 제어 비활성화
   function disableManualControl() {
     stopAcceleration();
+
     dirButtons.forEach((btn) => {
       btn.disabled = true;
       btn.classList.remove("active");
@@ -458,6 +447,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // 수동 제어 활성화
   function enableManualControl() {
     dirButtons.forEach((btn) => {
       btn.disabled = false;
@@ -473,8 +463,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // 제어 모드 전환
   function setMode(mode) {
     stopAcceleration();
+
     if (mode === "auto") {
       currentMode = "auto";
       autoBtn?.classList.add("active");
@@ -492,31 +484,31 @@ document.addEventListener("DOMContentLoaded", () => {
   if (autoBtn) autoBtn.addEventListener("click", () => setMode("auto"));
   if (manualBtn) manualBtn.addEventListener("click", () => setMode("manual"));
 
+  // 자동 모드 속도 전송
   function sendAutoSpeed(gear) {
     if (ws.readyState !== WebSocket.OPEN) return;
-    ws.send(
-      JSON.stringify({
-        type: "auto_speed",
-        payload: { gear },
-      })
-    );
+
+    ws.send(JSON.stringify({
+      type: "auto_speed",
+      payload: { gear },
+    }));
+
     console.log(`[AUTO] 자동 모드 기어 → ${gear}단`);
   }
 
-  // ====== 속도 슬라이더 ======
+  // 속도 슬라이더 처리
   if (speedSlider) {
     speedSlider.addEventListener("input", (e) => {
       currentSpeedLevel = Number(e.target.value);
-      console.log(
-        `[속도 단계] ${currentSpeedLevel}단 (${MAX_SPEED[currentSpeedLevel]} m/s)`
-      );
+      console.log(`[속도 단계] ${currentSpeedLevel}단 (${MAX_SPEED[currentSpeedLevel]} m/s)`);
+
       if (currentMode === "auto") {
         sendAutoSpeed(currentSpeedLevel);
       }
     });
   }
 
-  // ====== cmd_vel ======
+  // cmd_vel 전송
   function sendVelocity(linearX, angularZ) {
     if (ws.readyState !== WebSocket.OPEN) {
       console.warn("[WS] 연결 안됨, 명령 전송 불가");
@@ -539,7 +531,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ws.send(JSON.stringify(msg));
   }
 
-  // ====== 가속 시작 ======
+  // 가속 시작
   function startAcceleration(direction) {
     if (currentMode !== "manual") return;
 
@@ -562,7 +554,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }, ACCEL_TICK);
   }
 
-  // ====== 가속 중지 ======
+  // 가속 중지
   function stopAcceleration() {
     if (accelInterval) clearInterval(accelInterval);
     accelInterval = null;
@@ -571,7 +563,7 @@ document.addEventListener("DOMContentLoaded", () => {
     sendVelocity(0, 0);
   }
 
-  // ====== 방향 버튼 ======
+  // 방향 버튼 요소 참조
   const upBtn = document.querySelector(".dir_btn.up");
   const downBtn = document.querySelector(".dir_btn.down");
   const leftBtn = document.querySelector(".dir_btn.left");
@@ -586,6 +578,7 @@ document.addEventListener("DOMContentLoaded", () => {
   ["up", "down", "left", "right"].forEach((dir) => {
     const btn = document.querySelector(`.dir_btn.${dir}`);
     if (!btn) return;
+
     btn.addEventListener("mouseup", stopAcceleration);
     btn.addEventListener("mouseleave", () => {
       if (accelInterval) stopAcceleration();
@@ -594,7 +587,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (stopBtn) stopBtn.addEventListener("click", stopAcceleration);
 
-  // ====== 키보드 방향키 ======
+  // 키보드 방향키 처리
   document.addEventListener("keydown", (e) => {
     if (currentMode !== "manual") return;
     if (accelInterval) return;
@@ -621,12 +614,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // ====== 초기 설정 ======
+  // 초기 모드 및 슬라이더 설정
   setMode("auto");
   if (speedSlider) speedSlider.value = String(currentSpeedLevel);
 
+  // 로봇 목록 초기 로딩
   loadRobotList();
 
+  // 핀 목록 로딩
   async function loadPins() {
     const res = await fetch("/pins/");
     const pins = await res.json();
@@ -634,7 +629,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const pinSelect = document.getElementById("pin_select");
     pinSelect.innerHTML = "";
 
-    pins.forEach(pin => {
+    pins.forEach((pin) => {
       const op = document.createElement("option");
       op.value = pin.id;
       op.textContent = `${pin.name}`;
@@ -644,6 +639,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   loadPins();
 
+  // 이동 명령 처리
   if (moveBtn) {
     moveBtn.addEventListener("click", () => {
       const pinSelect = document.getElementById("pin_select");
@@ -651,99 +647,82 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const currentRobotName =
         document.getElementById("robot_select")
-                ?.selectedOptions[0]
-                ?.textContent.split("(")[0].trim();
+          ?.selectedOptions[0]
+          ?.textContent.split("(")[0]
+          .trim();
 
-      // 1) 상태 브로드캐스트
       ws.send(JSON.stringify({
         type: "robot_status",
-        payload: {
-          name: currentRobotName,
-          state: "이동중"
-        }
+        payload: { name: currentRobotName, state: "이동중" },
       }));
 
-      // 2) 실제 이동 명령
       const command = `MOVE_TO_PIN ${pinName}`;
       ws.send(JSON.stringify({
         type: "ui_command",
-        payload: { command }
+        payload: { command },
       }));
 
       console.log("[WS] 위치 이동 명령:", command);
     });
   }
 
+  // 복귀 명령 처리
   if (returnBtn) {
     returnBtn.addEventListener("click", () => {
-    
       const currentRobotName =
         document.getElementById("robot_select")
-                ?.selectedOptions[0]
-                ?.textContent.split("(")[0].trim();
-    
-      // 1) 상태 업데이트
+          ?.selectedOptions[0]
+          ?.textContent.split("(")[0]
+          .trim();
+
       ws.send(JSON.stringify({
         type: "robot_status",
-        payload: {
-          name: currentRobotName,
-          state: "복귀중"
-        }
+        payload: { name: currentRobotName, state: "복귀중" },
       }));
-    
-      // 2) 실제 명령
+
       ws.send(JSON.stringify({
         type: "ui_command",
-        payload: { command: "WAIT" }
+        payload: { command: "WAIT" },
       }));
-    
+
       console.log("[WS] 복귀 명령 전송");
     });
   }
 
+  // 비상정지 처리
   if (emergencyBtn) {
     emergencyBtn.addEventListener("click", () => {
-
-      // 1) 즉시 정지 cmd_vel 전송
       ws.send(JSON.stringify({
         type: "cmd_vel",
         payload: {
           linear: { x: 0, y: 0, z: 0 },
           angular: { x: 0, y: 0, z: 0 },
-          gear: 0
-        }
+          gear: 0,
+        },
       }));
 
-      // 2) 로봇 상태도 갱신 (대시보드·로봇관리 둘 다)
       ws.send(JSON.stringify({
         type: "robot_status",
-        payload: {
-          state: "비상정지"
-        }
+        payload: { state: "비상정지" },
       }));
 
-      console.log("🛑 비상정지 즉시 정지 명령 전송!");
+      console.log("비상정지 즉시 정지 명령 전송");
     });
   }
 
-  
-
-
-  /* ============================================================
-     🔥 로봇 관리 페이지 지도 기능 (대시보드와 충돌 방지)
-     모든 변수/함수 robotMap_ 네임스페이스로 분리됨
-  ============================================================ */
-
+  // 로봇 관리 페이지 지도 컨테이너
   const robotMap_container = document.querySelector(".map_canvas");
   let robotMap_img = null;
   let robotMap_marker = null;
 
+  // 로봇 관리 지도 정보 캐시
   let robotMap_info = {
     image: null,
     resolution: 0.05,
-    origin: [0, 0]
+    origin: [0, 0],
   };
 
+  // 로봇 관리 지도 Pivot 및 보정값
   const robotMap_PIVOT_X = 1.42;
   const robotMap_PIVOT_Y = 1.72;
 
@@ -752,20 +731,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const ROBOT_MAP_SCALE_X = 0.85;
   const ROBOT_MAP_SCALE_Y = 0.80;
 
-  /* ------------------------------------------------------------
-     지도 로딩
-  ------------------------------------------------------------ */
+  // 로봇 관리 지도 로딩
   async function robotMap_loadMap() {
     try {
       const res = await fetch("/map/info");
       const info = await res.json();
 
       robotMap_info = info;
-
-      // 기존 안내 문구 제거
       robotMap_container.innerHTML = "";
 
-      // 이미지 엘리먼트 생성
       robotMap_img = document.createElement("img");
       robotMap_img.src = info.image;
       robotMap_img.style.position = "absolute";
@@ -778,7 +752,6 @@ document.addEventListener("DOMContentLoaded", () => {
       robotMap_container.style.position = "relative";
       robotMap_container.appendChild(robotMap_img);
 
-      // 로봇 마커
       robotMap_marker = document.createElement("div");
       robotMap_marker.style.position = "absolute";
       robotMap_marker.style.width = "25px";
@@ -789,16 +762,13 @@ document.addEventListener("DOMContentLoaded", () => {
       robotMap_marker.style.display = "none";
       robotMap_container.appendChild(robotMap_marker);
 
-      console.log("📌 RobotMap: 지도 로딩 완료");
-
+      console.log("RobotMap: 지도 로딩 완료");
     } catch (err) {
       console.error("RobotMap: 지도 로딩 실패 →", err);
     }
   }
 
-  /* ------------------------------------------------------------
-     ROS → 픽셀 변환
-  ------------------------------------------------------------ */
+  // 로봇 관리 지도 좌표 변환
   function robotMap_rosToPixel(x, y) {
     if (!robotMap_img || !robotMap_img.complete) return { x: 0, y: 0 };
 
@@ -836,9 +806,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  /* ------------------------------------------------------------
-     마커 업데이트
-  ------------------------------------------------------------ */
+  // 로봇 관리 지도 마커 업데이트
   function robotMap_updateRobotMarker(x, y, theta) {
     if (!robotMap_marker || !robotMap_img) return;
 
@@ -850,10 +818,6 @@ document.addEventListener("DOMContentLoaded", () => {
     robotMap_marker.style.transform = `rotate(${(theta || 0) * 180 / Math.PI}deg)`;
   }
 
-  /* ------------------------------------------------------------
-     초기 지도 로딩 실행
-  ------------------------------------------------------------ */
+  // 로봇 관리 지도 초기 로딩
   robotMap_loadMap();
-
-
-}); // END OF DOMContentLoaded
+});

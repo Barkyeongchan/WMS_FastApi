@@ -1,5 +1,3 @@
-# app/core/ros/listener.py
-
 import roslibpy
 import json
 import math
@@ -19,6 +17,7 @@ class RosListener:
             print("[ROS] Listener: ROS 미연결 상태")
             return
 
+        # 토픽별 ROS 메시지 타입 매핑
         topic_map = {
             "/odom": "nav_msgs/msg/Odometry",
             "/battery_state": "sensor_msgs/msg/BatteryState",
@@ -28,12 +27,12 @@ class RosListener:
             "/nav": "std_msgs/msg/String",
             "/teleop_key": "std_msgs/msg/String",
             "/diagnostics": "diagnostic_msgs/msg/DiagnosticArray",
-            "/camera": "sensor_msgs/msg/Image",
         }
 
         msg_type = topic_map.get(topic_name, "std_msgs/msg/String")
         topic = roslibpy.Topic(self.ros, topic_name, msg_type)
 
+        # 구독 콜백 등록
         def _cb(msg, t=topic_name):
             self._handle_message(t, msg)
 
@@ -43,21 +42,21 @@ class RosListener:
 
     def _handle_message(self, topic_name, msg):
         try:
-            # ----------------------------------------------------
-            # ARRIVED:XXX (핀 도착 이벤트)
-            # ----------------------------------------------------
+            # /nav 도착 이벤트(ARRIVED:PIN) 처리
             if topic_name == "/nav":
                 text = msg.get("data", "")
                 if isinstance(text, str) and text.startswith("ARRIVED:"):
                     pin_name = text.replace("ARRIVED:", "")
                     print(f"[ROS] 🏁 도착 신호 → {pin_name}")
 
+                    # WAIT 도착이면 대기중 상태 브로드캐스트
                     if pin_name == "WAIT":
                         ws_manager.broadcast({
                             "type": "robot_status",
                             "payload": {"state": "대기중"}
                         })
 
+                    # 도착 이벤트 브로드캐스트
                     ws_manager.broadcast({
                         "type": "robot_arrived",
                         "payload": {
@@ -67,9 +66,7 @@ class RosListener:
                     })
                     return
 
-            # ----------------------------------------------------
-            # 기본 메시지 처리
-            # ----------------------------------------------------
+            # ROS 메시지 -> 전송용 데이터 변환
             data = process_ros_data(
                 topic_name,
                 msg,
@@ -78,15 +75,15 @@ class RosListener:
             if not data:
                 return
 
+            # payload에 robot_name 보장
             if "payload" in data:
                 data["payload"]["robot_name"] = self.robot_name
 
+            # 최종 WS 메시지 생성 후 브로드캐스트
             ws_msg = build_message(data["type"], data["payload"])
             ws_manager.broadcast(ws_msg)
 
-            # ----------------------------------------------------
-            # 🔥 마지막 위치 저장
-            # ----------------------------------------------------
+            # /amcl_pose 최신 좌표 캐시 저장
             if topic_name == "/amcl_pose":
                 try:
                     from app.core.ros.ros_manager import ros_manager
@@ -113,6 +110,7 @@ class RosListener:
             print(f"[ROS] ⚠️ {topic_name} 처리 오류:", e)
 
     def close(self):
+        # 구독 해제 및 리소스 정리
         print("[ROS] Listener closed")
         for t in self.topics:
             try:

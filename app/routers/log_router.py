@@ -1,18 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+from datetime import datetime, timezone, timedelta
+
 from app.core.database import SessionLocal
 from app.models.log_model import Log
 from app.schemas.log_schema import LogResponse, LogCreate, LogUpdate
 from app.crud import log_crud
-from datetime import datetime, timezone, timedelta
 
+# 로그 관련 API 라우터
 router = APIRouter(prefix="/logs", tags=["Logs"])
 
 
-# ---------------------------
-# DB 세션
-# ---------------------------
+# DB 세션 의존성
 def get_db():
     db = SessionLocal()
     try:
@@ -21,21 +21,16 @@ def get_db():
         db.close()
 
 
-# ---------------------------
 # 전체 로그 조회
-# ---------------------------
 @router.get("/", response_model=List[LogResponse])
 def read_logs(db: Session = Depends(get_db)):
     return log_crud.get_logs(db)
 
 
-# ---------------------------
-# 🔥 오늘 요약 (입고/출고/등록 카운트)
-# ---------------------------
+# 오늘 입고/출고/상품등록 요약 조회
 @router.get("/today-summary")
 def get_today_summary(db: Session = Depends(get_db)):
-
-    # 한국 시간 기준 날짜
+    # 한국 시간 기준 현재 날짜
     now_kst = datetime.now(timezone(timedelta(hours=9)))
     today = now_kst.date()
 
@@ -49,9 +44,8 @@ def get_today_summary(db: Session = Depends(get_db)):
         if not log.timestamp:
             continue
 
-        # timestamp를 KST로 변환
+        # 로그 시간을 KST로 변환
         log_time = log.timestamp.astimezone(timezone(timedelta(hours=9)))
-
         if log_time.date() != today:
             continue
 
@@ -65,16 +59,13 @@ def get_today_summary(db: Session = Depends(get_db)):
     return {
         "inbound": inbound,
         "outbound": outbound,
-        "created": created
+        "created": created,
     }
 
 
-# ---------------------------
-# 🔥 최근 입/출고 작업 5개
-# ---------------------------
+# 최근 입고/출고 작업 5개 조회
 @router.get("/recent-tasks")
 def get_recent_tasks(db: Session = Depends(get_db)):
-
     logs = (
         db.query(Log)
         .filter(
@@ -88,7 +79,10 @@ def get_recent_tasks(db: Session = Depends(get_db)):
 
     result = []
     for log in logs:
-        time_kst = log.timestamp.astimezone(timezone(timedelta(hours=9))).strftime("%H:%M")
+        # 로그 시간을 HH:MM 형식으로 변환
+        time_kst = log.timestamp.astimezone(
+            timezone(timedelta(hours=9))
+        ).strftime("%H:%M")
 
         result.append({
             "time": time_kst,
@@ -102,10 +96,7 @@ def get_recent_tasks(db: Session = Depends(get_db)):
     return result
 
 
-# ---------------------------
 # 단일 로그 조회
-# (⚠️ 변수 라우트는 반드시 맨 뒤로!)
-# ---------------------------
 @router.get("/{log_id}", response_model=LogResponse)
 def read_log(log_id: int, db: Session = Depends(get_db)):
     log = log_crud.get_log_by_id(db, log_id)
@@ -114,17 +105,13 @@ def read_log(log_id: int, db: Session = Depends(get_db)):
     return log
 
 
-# ---------------------------
 # 로그 생성
-# ---------------------------
 @router.post("/", response_model=LogResponse)
 def create_log(log: LogCreate, db: Session = Depends(get_db)):
     return log_crud.create_log(db, log)
 
 
-# ---------------------------
 # 로그 수정
-# ---------------------------
 @router.put("/{log_id}", response_model=LogResponse)
 def update_log(log_id: int, log_data: LogUpdate, db: Session = Depends(get_db)):
     updated = log_crud.update_log(db, log_id, log_data)
@@ -133,9 +120,7 @@ def update_log(log_id: int, log_data: LogUpdate, db: Session = Depends(get_db)):
     return updated
 
 
-# ---------------------------
 # 로그 삭제
-# ---------------------------
 @router.delete("/{log_id}", response_model=LogResponse)
 def delete_log(log_id: int, db: Session = Depends(get_db)):
     deleted = log_crud.delete_log(db, log_id)
