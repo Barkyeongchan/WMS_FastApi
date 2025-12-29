@@ -8,6 +8,10 @@ FastAPI를 기반으로 REST API와 WebSocket을 제공하며,
 
 현재 시스템은 **클라우드 없이 로컬 환경**에서 동작
 
+## 시연 영상
+
+(https://www.youtube.com/watch?v=mQyajakaVZY)
+
 ## 1️⃣ 프로젝트 개요
 
 - 웹 클라이언트에서 재고 입·출고 작업 요청
@@ -177,3 +181,4 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 > 전체 로컬 아키텍처 및 실행 구조는  
 > [`ARCHITECTURE_LOCAL_FASTAPI.md`](./ARCHITECTURE_LOCAL_FASTAPI.md)를 참고하세요.
+
