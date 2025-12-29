@@ -10,7 +10,7 @@ FastAPI를 기반으로 REST API와 WebSocket을 제공하며,
 
 ## 시연 영상
 
-[!(https://img.youtube.com/vi/mQyajakaVZY/0.jpg)](https://www.youtube.com/watch?v=mQyajakaVZY)
+[![WMS FastAPI Demo](https://img.youtube.com/vi/mQyajakaVZY/0.jpg)](https://www.youtube.com/watch?v=mQyajakaVZY)
 
 ## 1️⃣ 프로젝트 개요
 
